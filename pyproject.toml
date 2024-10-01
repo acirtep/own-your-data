@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "own-your-data"
+version = "0.1.0"
+description = "Application to track and trace any data you want, on your local machine, through the web browser"
+authors = ["acirtep <acirtep>"]
+readme = "README.md"
+packages = [{include = "own_your_data"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+streamlit = "^1.38.0"
+duckdb = "^1.1.1"
+plotly = "^5.24.1"
+fsspec = "^2024.9.0"
+
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.13.2"
+black = "^24.8.0"
+flake8 = "^7.1.1"
+pre-commit = "^3.8.0"
+
+
+[tool.black]
+line-length = 120
+exclude = "data_analysis"
+
+[tool.isort]
+profile = "black"
+force_single_line = "true"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

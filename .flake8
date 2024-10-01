@@ -1,0 +1,4 @@
+[flake8]
+max-line-length=120
+ignore=E203,W503,E402,B008
+per-file-ignores=__init__.py:F401 database_migrations/versions/34153121cf13_alter_timestamp_with_zone.py:E501
