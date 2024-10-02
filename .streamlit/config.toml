@@ -2,4 +2,4 @@
     gatherUsageStats = false
 
 [theme]
-    font="arial"
+    font="monospace"

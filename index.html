@@ -14,24 +14,30 @@
     stlite.mount(
       {
         pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js",
-        requirements: ["plotly==5.24.1", "duckdb", "fsspec==2024.9.0"],
+        requirements: [
+                "plotly==5.24.1",
+                "duckdb",
+                "fsspec==2024.9.0",
+                // "sqlalchemy==2.0.35",
+                // "duckdb-engine==0.13.2"
+        ],
         streamlitConfig: {
           "client.showErrorDetails": false,
           "browser.gatherUsageStats": false,
         },
-        entrypoint: "own_your_data/app.py",
+        entrypoint: "own_your_data/home.py",
         files: {
-          "own_your_data/app.py": {
-            url: "own_your_data/app.py",
+          "own_your_data/home.py": {
+            url: "own_your_data/home.py",
           },
-          "own_your_data/pages/1_configure_data.py": {
-            url: "own_your_data/pages/1_configure_data.py"
+          "own_your_data/charts.py": {
+            url: "own_your_data/charts.py",
           },
-          "own_your_data/pages/2_generate_charts.py": {
-            url: "own_your_data/pages/2_generate_charts.py"
+          "own_your_data/constants.py": {
+            url: "own_your_data/constants.py",
           },
-          "own_your_data/charts/sankey.py":{
-            url: "own_your_data/charts/sankey.py"
+          "own_your_data/pages/generate_charts.py": {
+            url: "own_your_data/pages/generate_charts.py"
           },
         },
       },
