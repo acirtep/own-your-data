@@ -105,17 +105,6 @@ def preview_data_and_get_plot(data_source: UploadedFile, plot_type: str):
                 sql_query = bar_chart.sql_query
 
             case "sankey":
-                arrangement = st.sidebar.radio(
-                    "✅ arrangement",
-                    ("snap", "perpendicular", "freeform", "fixed"),
-                    help="""Default: "snap"
-                    If value is `snap` (the default), the node arrangement is assisted by automatic snapping of \
-                    elements to preserve space between nodes specified via `nodepad`. If value is `perpendicular`,\
-                    the nodes can only move along a line perpendicular to the flow. If value is `freeform`, \
-                    the nodes can freely move on the plane. If value is `fixed`, the nodes are stationary.""",
-                    horizontal=True,
-                )
-
                 flow_columns = st.sidebar.multiselect(
                     "Select the category columns",
                     dimension_columns,
@@ -129,7 +118,7 @@ def preview_data_and_get_plot(data_source: UploadedFile, plot_type: str):
                     orientation=orientation,
                 )
                 fig_plot = sankey_chart.get_plot()
-                fig_plot.update_traces(arrangement=arrangement, selector=dict(type="sankey"))
+                fig_plot.update_traces(arrangement="snap", selector=dict(type="sankey"))
                 sql_query = sankey_chart.sql_query
 
             case _:
@@ -150,22 +139,20 @@ def preview_data_and_get_plot(data_source: UploadedFile, plot_type: str):
         st.error(f":red[Something went wrong] {error}")  # NOQA
 
 
-with st.spinner("Importing data in memory..."):
+with st.sidebar.expander("Data source"):
+    data_source = st.sidebar.file_uploader("✅ upload file(s)", type=["csv", "txt"])
 
-    with st.sidebar.expander("Data source"):
-        data_source = st.sidebar.file_uploader("✅ upload file(s)", type=["csv", "txt"])
+height = st.sidebar.slider("✅ height", min_value=400, max_value=4000, step=50)
 
-    height = st.sidebar.slider("✅ height", min_value=400, max_value=4000, step=50)
+width = st.sidebar.slider("✅ width", min_value=600, max_value=3000, step=50, value=1200)
 
-    width = st.sidebar.slider("✅ width", min_value=600, max_value=3000, step=50, value=1200)
+orientation = st.sidebar.radio(
+    "✅ orientation", ("h", "v"), help="h=horizontal, v=vertical, default h", horizontal=True
+)
 
-    orientation = st.sidebar.radio(
-        "✅ orientation", ("h", "v"), help="h=horizontal, v=vertical, default h", horizontal=True
-    )
+plot_type = st.sidebar.radio("✅ plot type", ("bar", "sankey"), horizontal=True)
 
-    plot_type = st.sidebar.radio("✅ plot type", ("bar", "sankey"), horizontal=True)
+title = st.sidebar.text_input(label="✅ plot title", max_chars=100)
 
-    title = st.sidebar.text_input(label="✅ plot title", max_chars=100)
-
-    if data_source:
-        preview_data_and_get_plot(data_source=data_source, plot_type=plot_type)
+if data_source:
+    preview_data_and_get_plot(data_source=data_source, plot_type=plot_type)
