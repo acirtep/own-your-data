@@ -20,3 +20,9 @@ Install Python 3.12 or greater
 ## with Python
 1. Install packages `poetry install`
 2. Run `make local_run`
+
+
+### Miscellaneous
+
+#### Generate synthetic data
+1. Run app locally and execute `make demo_csv`
