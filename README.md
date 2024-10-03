@@ -7,12 +7,16 @@ This is an (experimental) in-browser application, based on:
 4. [duckdb](https://duckdb.org/)
 5. [pyodide](https://pyodide.org/en/stable/)
 
+The application is available at: https://acirtep.github.io/own-your-data/
 
+## run it locally
 
-## run it on the web
-Simply open `index.html` on a web browser.
+Install Python 3.12 or greater
 
-## run it locally with Python
-1. Install Python 3.12 or up
-2. Install packages `poetry install`
-3. Run `make local_run`
+## with Pyodide
+1. Run `python3 -m http.server`
+2. Go to http://localhost:8000/, in your browser
+
+## with Python
+1. Install packages `poetry install`
+2. Run `make local_run`
