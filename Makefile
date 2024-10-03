@@ -10,3 +10,5 @@ check:
 demo_csv:
 	python own_your_data/demo/generate_csv.py
 
+test:
+	pytest -v --durations 5 --cov own_your_data

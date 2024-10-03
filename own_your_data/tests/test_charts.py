@@ -14,7 +14,7 @@ from own_your_data.database.helpers import import_csv
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def duckdb_conn_with_final_csv_data():
     duckdb_conn = duckdb.connect()
     with open(test_file_path, "r") as f:
@@ -49,6 +49,10 @@ def test_generate_sankey_chart(duckdb_conn_with_final_csv_data):
     assert fig_plot
     # 7 day names and 12 month names
     assert len(fig_plot.data[0]["node"]["label"]) == 7 + 12
+    assert fig_plot.data[0]["node"]["x"][fig_plot.data[0]["node"]["label"].index("January")] == 0.001
+    assert fig_plot.data[0]["node"]["y"][fig_plot.data[0]["node"]["label"].index("January")] == 0.001
+    assert fig_plot.data[0]["node"]["x"][fig_plot.data[0]["node"]["label"].index("Monday")] == 0.5
+    assert fig_plot.data[0]["node"]["y"][fig_plot.data[0]["node"]["label"].index("Monday")] == 0.001
 
 
 def test_generate_line_chart(duckdb_conn_with_final_csv_data):
