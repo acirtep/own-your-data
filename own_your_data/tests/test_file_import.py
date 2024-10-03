@@ -37,6 +37,7 @@ def test_get_auto_column_expressions(duckdb_conn_with_initial_csv_data):
     assert 'monthname("register_date") as "Register Date Month Name Auto"' in auto_column_expressions
     assert 'dayname("register_date") as "Register Date Day Name Auto"' in auto_column_expressions
     assert 'date_part(\'year\', "register_date") as "Register Date Year Auto"' in auto_column_expressions
+    assert '"register_date"::date as "Register Date Date Auto"' in auto_column_expressions
 
 
 def test_finalize_import(duckdb_conn_with_initial_csv_data):

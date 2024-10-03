@@ -44,7 +44,7 @@ def get_auto_column_expressions(duckdb_conn: DuckDBPyConnection) -> str:
     ]
     auto_column_expressions.extend(
         [
-            f""", "{column[0]}"::date as "{clean_column_name(column_name=column[0])} Date Auto" """
+            f""" "{column[0]}"::date as "{clean_column_name(column_name=column[0])} Date Auto" """
             for column in date_related_columns
             if column[1]
         ]
