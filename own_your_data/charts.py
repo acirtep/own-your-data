@@ -43,7 +43,8 @@ class BarChart(BaseChart):
                 "{self.color_column}"
             from csv_import_t
             {self.where_expression}
-            group by all
+            group by 2,3
+            order by 2,3
         """
         return self.duckdb_conn.execute(self.sql_query).df()
 
@@ -61,6 +62,30 @@ class BarChart(BaseChart):
             x=self.metric_column,
             y=self.dim_columns[0],
             orientation=self.orientation,
+            color=self.color_column,
+        )
+
+
+class LineChart(BaseChart):
+    def get_data(self) -> DataFrame:
+        self.sql_query = f"""
+            select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.color_column}"
+            from csv_import_t
+            {self.where_expression}
+            group by 2,3
+            order by 2,3
+        """
+        return self.duckdb_conn.execute(self.sql_query).df()
+
+    def get_plot(self) -> Figure:
+        return px.line(
+            data_frame=self.get_data(),
+            x=self.dim_columns[0],
+            y=self.metric_column,
+            orientation="v",
             color=self.color_column,
         )
 

@@ -31,12 +31,12 @@ if __name__ == "__main__":
 
     duckdb_conn.execute(
         f"""
-        copy (select range::date as register_date,
+        copy (select range::datetime as register_date,
             random_category() as category,
             random_store() as store,
             random_price() as "price now"
           from
-          range(date '2022-01-31', date '2024-12-31', interval '1' day)    ,
+          range(date '2022-01-31 00:00:00', date '2024-12-31 00:00:00', interval '1' hour)    ,
           generate_series(1, 1)) to '{file_path}'
         """
     )

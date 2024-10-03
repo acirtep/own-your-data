@@ -24,11 +24,15 @@
         streamlitConfig: {
           "client.showErrorDetails": false,
           "browser.gatherUsageStats": false,
+          "server.maxUploadSize": 10
         },
         entrypoint: "own_your_data/home.py",
         files: {
           "own_your_data/home.py": {
             url: "own_your_data/home.py",
+          },
+          "own_your_data/database/helpers.py": {
+            url: "own_your_data/database/helpers.py"
           },
           "own_your_data/charts.py": {
             url: "own_your_data/charts.py",
