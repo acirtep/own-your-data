@@ -7,5 +7,6 @@ check:
 	pre-commit run --all-files
 
 
-test_csv:
-	python own_your_data/tests/generate_csv.py
+generate_demo_csv:
+	python own_your_data/demo/generate_csv.py
+
