@@ -5,6 +5,7 @@ import duckdb
 import pytest
 
 from own_your_data.charts.charts import BarChart
+from own_your_data.charts.charts import HeatMapChart
 from own_your_data.charts.charts import LineChart
 from own_your_data.charts.charts import SankeyChart
 from own_your_data.charts.import_file import finalize_import
@@ -66,3 +67,17 @@ def test_generate_line_chart(duckdb_conn_with_final_csv_data):
     fig_plot = line_chart.plot
     assert fig_plot
     assert "Monday" in [fig_plot_data["name"] for fig_plot_data in fig_plot.data]
+
+
+def test_generate_heatmap_chart(duckdb_conn_with_final_csv_data):
+    heatmap_chart = HeatMapChart(
+        duckdb_conn=duckdb_conn_with_final_csv_data,
+        metric_column="Price Now",
+        dim_columns=["Register Date Day Name Auto"],
+        color_column="Register Date Month Name Auto",
+        orientation="h",
+    )
+    fig_plot = heatmap_chart.plot
+    assert fig_plot
+    assert fig_plot.data[0]["x"][0] == "Monday"
+    assert fig_plot.data[0]["y"][0] == "January"

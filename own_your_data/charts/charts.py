@@ -17,7 +17,7 @@ class BaseChart:
         metric_column: str,
         dim_columns: [str],
         color_column: str | None,
-        orientation: str,
+        orientation: str | None,
     ):
         self.duckdb_conn = duckdb_conn
         self.metric_column = metric_column or DEFAULT_METRIC_COLUMN
@@ -38,21 +38,6 @@ class BaseChart:
 
     @timeit
     def get_sql_query(self) -> str:
-        pass
-
-    @timeit
-    def get_data(self) -> DataFrame:
-        return self.duckdb_conn.execute(self.sql_query).df()
-
-    @timeit
-    def get_plot(self) -> Figure:
-        pass
-
-
-class BarChart(BaseChart):
-
-    @timeit
-    def get_sql_query(self) -> str:
         return f"""
             select
                 {self.agg_expression} as "{self.metric_column}",
@@ -64,6 +49,17 @@ class BarChart(BaseChart):
             order by {get_order_clause(column_name=self.dim_columns[0])},
                 {get_order_clause(column_name=self.color_column)}
         """
+
+    @timeit
+    def get_data(self) -> DataFrame:
+        return self.duckdb_conn.execute(self.sql_query).df()
+
+    @timeit
+    def get_plot(self) -> Figure:
+        pass
+
+
+class BarChart(BaseChart):
 
     @timeit
     def get_plot(self) -> Figure:
@@ -87,29 +83,8 @@ class BarChart(BaseChart):
 class LineChart(BaseChart):
 
     @timeit
-    def get_sql_query(self) -> str:
-        return f"""
-            select
-                {self.agg_expression} as "{self.metric_column}",
-                "{self.dim_columns[0]}",
-                "{self.color_column}"
-            from csv_import_t
-            {self.where_expression}
-            group by 2,3
-            order by {get_order_clause(column_name=self.dim_columns[0])},
-                {get_order_clause(column_name=self.color_column)}
-        """
-
-    @timeit
     def get_plot(self) -> Figure:
-        self.get_data()
-        return px.line(
-            data_frame=self.data,
-            x=self.dim_columns[0],
-            y=self.metric_column,
-            orientation="v",
-            color=self.color_column,
-        )
+        return px.line(data_frame=self.data, x=self.dim_columns[0], y=self.metric_column, color=self.color_column)
 
 
 class SankeyChart(BaseChart):
@@ -235,17 +210,18 @@ class SankeyChart(BaseChart):
     @timeit
     def get_plot(self) -> Figure:
         unpacked_data = self.data.to_dict(orient="records")[0]
-        return Figure(
+        fig = Figure(
             data=[
                 go.Sankey(
                     orientation=self.orientation,
                     valueformat=".0f",
+                    textfont=dict(color="black", size=12),
                     node=dict(
                         pad=10,
                         thickness=20,
                         line=dict(color="black", width=0.5),
                         label=unpacked_data["label"],
-                        color="rgb(204, 80, 62)",
+                        color="rgb(228, 241, 225)",
                         x=unpacked_data["label_x_position"],
                         y=unpacked_data["label_y_position"],
                     ),
@@ -253,8 +229,32 @@ class SankeyChart(BaseChart):
                         source=unpacked_data["source"],
                         target=unpacked_data["target"],
                         value=unpacked_data["values"],
-                        color=["rgb(221, 204, 119)" for i in range(0, len(unpacked_data["source"]))],
+                        color=["rgb(99, 166, 160)" for i in range(0, len(unpacked_data["source"]))],
                     ),
                 )
             ]
         )
+
+        return fig
+
+
+class HeatMapChart(BaseChart):
+
+    @timeit
+    def get_plot(self) -> Figure:
+        pivoted_data = self.data.pivot_table(
+            index=self.color_column, columns=self.dim_columns[0], values=self.metric_column, sort=False
+        ).fillna(0)
+
+        fig = px.imshow(
+            pivoted_data.to_numpy(),
+            labels=dict(x=self.dim_columns[0], y=self.color_column, color=self.metric_column),
+            x=list(pivoted_data.columns),
+            y=list(pivoted_data.index),
+            color_continuous_scale="mint",
+            text_auto=".2f",
+            aspect="auto",
+        )
+        fig.update_xaxes(side="top")
+
+        return fig
