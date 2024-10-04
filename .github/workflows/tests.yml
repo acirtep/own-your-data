@@ -28,4 +28,4 @@ jobs:
         poetry install --with test
 
     - name: Run tests
-      run: poetry run pytest
+      run: poetry run pytest -v --durations 5 --cov own_your_data

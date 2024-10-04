@@ -4,9 +4,9 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from own_your_data.database.helpers import finalize_import
-from own_your_data.database.helpers import get_auto_column_expressions
-from own_your_data.database.helpers import import_csv
+from own_your_data.charts.import_file import finalize_import
+from own_your_data.charts.import_file import get_auto_column_expressions
+from own_your_data.charts.import_file import import_csv
 
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 
@@ -33,7 +33,6 @@ def test_import_csv(duckdb_conn):
 
 def test_get_auto_column_expressions(duckdb_conn_with_initial_csv_data):
     auto_column_expressions = get_auto_column_expressions(duckdb_conn=duckdb_conn_with_initial_csv_data)
-    print(auto_column_expressions)
     assert 'monthname("register_date") as "Register Date Month Name Auto"' in auto_column_expressions
     assert 'dayname("register_date") as "Register Date Day Name Auto"' in auto_column_expressions
     assert 'date_part(\'year\', "register_date") as "Register Date Year Auto"' in auto_column_expressions

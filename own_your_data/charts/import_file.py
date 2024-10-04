@@ -3,6 +3,9 @@ import re
 from duckdb import DuckDBPyConnection
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from own_your_data.utils import get_duckdb_conn
+from own_your_data.utils import timeit
+
 
 def cleanup_db(duckdb_conn: DuckDBPyConnection):
     duckdb_conn.execute("drop table  if exists csv_import")
@@ -72,3 +75,12 @@ def finalize_import(duckdb_conn: DuckDBPyConnection, auto_column_expressions: st
     duckdb_conn.execute("drop table csv_import")
     duckdb_conn.execute("drop table csv_import_summary")
     duckdb_conn.execute("create table csv_import_summary_t as SELECT * FROM (SUMMARIZE csv_import_t)")
+
+
+@timeit
+def import_csv_and_process_data(data_source: UploadedFile) -> DuckDBPyConnection:
+    duckdb_conn = get_duckdb_conn()
+    import_csv(duckdb_conn=duckdb_conn, data_source=data_source)
+    auto_column_expressions = get_auto_column_expressions(duckdb_conn=duckdb_conn)
+    finalize_import(duckdb_conn=duckdb_conn, auto_column_expressions=auto_column_expressions)
+    return duckdb_conn

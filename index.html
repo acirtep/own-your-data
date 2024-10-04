@@ -1,52 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-  <title>Own Your Data</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.css" />
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <title>Own Your Data</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.css"/>
 </head>
 <body>
-  <div id="root"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.js"></script>
-    <script type="text/javascript">
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.js"></script>
+<script type="text/javascript">
     stlite.mount(
-      {
-        pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js",
-        requirements: [
+        {
+            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js",
+            requirements: [
                 "plotly==5.24.1",
                 "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.1.0-cp312-cp312-pyodide_2024_0_wasm32.whl",
                 "fsspec==2024.9.0",
                 // "sqlalchemy==2.0.35",
                 // "duckdb-engine==0.13.2"
-        ],
-        streamlitConfig: {
-          "client.showErrorDetails": false,
-          "browser.gatherUsageStats": false,
-          "server.maxUploadSize": 10
+            ],
+            streamlitConfig: {
+                "client.showErrorDetails": false,
+                "browser.gatherUsageStats": false,
+                "server.maxUploadSize": 10,
+                "logger.level": "warning"
+            },
+            entrypoint: "own_your_data/home.py",
+            files: {
+                "own_your_data/home.py": {
+                    url: "own_your_data/home.py",
+                },
+                "own_your_data/utils.py": {
+                    url: "own_your_data/utils.py",
+                },
+                "own_your_data/database/helpers.py": {
+                    url: "own_your_data/database/helpers.py"
+                },
+                "own_your_data/charts/charts.py": {
+                    url: "own_your_data/charts/charts.py",
+                },
+                "own_your_data/charts/constants.py": {
+                    url: "own_your_data/charts/constants.py",
+                },
+                "own_your_data/charts/helpers.py": {
+                    url: "own_your_data/charts/helpers.py",
+                },
+                "own_your_data/charts/import_file.py": {
+                    url: "own_your_data/charts/import_file.py",
+                },
+                "own_your_data/pages/generate_charts.py": {
+                    url: "own_your_data/pages/generate_charts.py"
+                },
+            },
         },
-        entrypoint: "own_your_data/home.py",
-        files: {
-          "own_your_data/home.py": {
-            url: "own_your_data/home.py",
-          },
-          "own_your_data/database/helpers.py": {
-            url: "own_your_data/database/helpers.py"
-          },
-          "own_your_data/charts.py": {
-            url: "own_your_data/charts.py",
-          },
-          "own_your_data/constants.py": {
-            url: "own_your_data/constants.py",
-          },
-          "own_your_data/pages/generate_charts.py": {
-            url: "own_your_data/pages/generate_charts.py"
-          },
-        },
-      },
-      document.getElementById("root")
+        document.getElementById("root")
     );
-  </script>
+</script>
 </body>
 </html>
