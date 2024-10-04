@@ -4,12 +4,12 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from own_your_data.charts import BarChart
-from own_your_data.charts import LineChart
-from own_your_data.charts import SankeyChart
-from own_your_data.database.helpers import finalize_import
-from own_your_data.database.helpers import get_auto_column_expressions
-from own_your_data.database.helpers import import_csv
+from own_your_data.charts.charts import BarChart
+from own_your_data.charts.charts import LineChart
+from own_your_data.charts.charts import SankeyChart
+from own_your_data.charts.import_file import finalize_import
+from own_your_data.charts.import_file import get_auto_column_expressions
+from own_your_data.charts.import_file import import_csv
 
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 
@@ -32,7 +32,7 @@ def test_generate_bar_chart(duckdb_conn_with_final_csv_data):
         color_column="Register Date Day Name Auto",
         orientation="h",
     )
-    fig_plot = bar_chart.get_plot()
+    fig_plot = bar_chart.plot
     assert fig_plot
     assert "Monday" in [fig_plot_data["name"] for fig_plot_data in fig_plot.data]
 
@@ -45,14 +45,14 @@ def test_generate_sankey_chart(duckdb_conn_with_final_csv_data):
         color_column=None,
         orientation="h",
     )
-    fig_plot = sankey_chart.get_plot()
+    fig_plot = sankey_chart.plot
     assert fig_plot
-    # 7 day names and 12 month names
-    assert len(fig_plot.data[0]["node"]["label"]) == 7 + 12
-    assert fig_plot.data[0]["node"]["x"][fig_plot.data[0]["node"]["label"].index("January")] == 0.001
-    assert fig_plot.data[0]["node"]["y"][fig_plot.data[0]["node"]["label"].index("January")] == 0.001
-    assert fig_plot.data[0]["node"]["x"][fig_plot.data[0]["node"]["label"].index("Monday")] == 0.5
-    assert fig_plot.data[0]["node"]["y"][fig_plot.data[0]["node"]["label"].index("Monday")] == 0.001
+    labels = fig_plot.data[0]["node"]["label"].tolist()
+    assert len(labels) == 7 + 12  # 7 day names and 12 month names
+    assert fig_plot.data[0]["node"]["x"][labels.index("January")] == 0.001
+    assert fig_plot.data[0]["node"]["y"][labels.index("January")] == 0.001
+    assert fig_plot.data[0]["node"]["x"][labels.index("Monday")] == 0.5
+    assert fig_plot.data[0]["node"]["y"][labels.index("Monday")] == 0.001
 
 
 def test_generate_line_chart(duckdb_conn_with_final_csv_data):
@@ -63,6 +63,6 @@ def test_generate_line_chart(duckdb_conn_with_final_csv_data):
         color_column="Register Date Day Name Auto",
         orientation="v",
     )
-    fig_plot = line_chart.get_plot()
+    fig_plot = line_chart.plot
     assert fig_plot
     assert "Monday" in [fig_plot_data["name"] for fig_plot_data in fig_plot.data]

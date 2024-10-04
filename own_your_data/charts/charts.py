@@ -4,8 +4,9 @@ from duckdb import DuckDBPyConnection
 from pandas import DataFrame
 from plotly.graph_objs import Figure
 
-from own_your_data.constants import DEFAULT_METRIC_COLUMN
-from own_your_data.database.helpers import get_order_clause
+from own_your_data.charts.constants import DEFAULT_METRIC_COLUMN
+from own_your_data.charts.helpers import get_order_clause
+from own_your_data.utils import timeit
 
 
 class BaseChart:
@@ -31,13 +32,28 @@ class BaseChart:
             self.agg_expression = f'sum("{metric_column}"::decimal)'
             self.where_expression = f'where try_cast("{metric_column}" as decimal) is not null'
 
-        self.sql_query = None
+        self.sql_query = self.get_sql_query()
+        self.data = self.get_data()
+        self.plot = self.get_plot()
+
+    @timeit
+    def get_sql_query(self) -> str:
+        pass
+
+    @timeit
+    def get_data(self) -> DataFrame:
+        return self.duckdb_conn.execute(self.sql_query).df()
+
+    @timeit
+    def get_plot(self) -> Figure:
+        pass
 
 
 class BarChart(BaseChart):
 
-    def get_data(self) -> DataFrame:
-        self.sql_query = f"""
+    @timeit
+    def get_sql_query(self) -> str:
+        return f"""
             select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
@@ -48,19 +64,19 @@ class BarChart(BaseChart):
             order by {get_order_clause(column_name=self.dim_columns[0])},
                 {get_order_clause(column_name=self.color_column)}
         """
-        return self.duckdb_conn.execute(self.sql_query).df()
 
+    @timeit
     def get_plot(self) -> Figure:
         if self.orientation == "v":
             return px.bar(
-                data_frame=self.get_data(),
+                data_frame=self.data,
                 x=self.dim_columns[0],
                 y=self.metric_column,
                 orientation=self.orientation,
                 color=self.color_column,
             )
         return px.bar(
-            data_frame=self.get_data(),
+            data_frame=self.data,
             x=self.metric_column,
             y=self.dim_columns[0],
             orientation=self.orientation,
@@ -69,8 +85,10 @@ class BarChart(BaseChart):
 
 
 class LineChart(BaseChart):
-    def get_data(self) -> DataFrame:
-        self.sql_query = f"""
+
+    @timeit
+    def get_sql_query(self) -> str:
+        return f"""
             select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
@@ -81,11 +99,12 @@ class LineChart(BaseChart):
             order by {get_order_clause(column_name=self.dim_columns[0])},
                 {get_order_clause(column_name=self.color_column)}
         """
-        return self.duckdb_conn.execute(self.sql_query).df()
 
+    @timeit
     def get_plot(self) -> Figure:
+        self.get_data()
         return px.line(
-            data_frame=self.get_data(),
+            data_frame=self.data,
             x=self.dim_columns[0],
             y=self.metric_column,
             orientation="v",
@@ -94,7 +113,9 @@ class LineChart(BaseChart):
 
 
 class SankeyChart(BaseChart):
-    def get_node_info(self):
+
+    @timeit
+    def get_sql_query(self) -> str:
         dim_col_list = " ,".join([f'"{dim_col}"' for dim_col in self.dim_columns])
         if len(self.dim_columns) <= 1:
             raise ValueError("At least 2 dimensions required!")
@@ -117,7 +138,7 @@ class SankeyChart(BaseChart):
             {'union all' if idx < len(self.dim_columns) - 2 else ""}
             """
 
-        self.sql_query = f"""
+        return f"""
                 with cube_cte as (
                     -- calculate the metric aggregate for each set of 2 dimensions, in the order selected
                     select
@@ -211,12 +232,9 @@ class SankeyChart(BaseChart):
                 group by all
                 """
 
-        node_info = self.duckdb_conn.execute(self.sql_query).fetchone()
-
-        return node_info
-
+    @timeit
     def get_plot(self) -> Figure:
-        label, x_position, y_position, source, target, value = self.get_node_info()
+        unpacked_data = self.data.to_dict(orient="records")[0]
         return Figure(
             data=[
                 go.Sankey(
@@ -226,16 +244,16 @@ class SankeyChart(BaseChart):
                         pad=10,
                         thickness=20,
                         line=dict(color="black", width=0.5),
-                        label=label,
+                        label=unpacked_data["label"],
                         color="rgb(204, 80, 62)",
-                        x=x_position,
-                        y=y_position,
+                        x=unpacked_data["label_x_position"],
+                        y=unpacked_data["label_y_position"],
                     ),
                     link=dict(
-                        source=source,
-                        target=target,
-                        value=value,
-                        color=["rgb(221, 204, 119)" for i in range(0, len(source))],
+                        source=unpacked_data["source"],
+                        target=unpacked_data["target"],
+                        value=unpacked_data["values"],
+                        color=["rgb(221, 204, 119)" for i in range(0, len(unpacked_data["source"]))],
                     ),
                 )
             ]

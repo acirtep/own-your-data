@@ -4,9 +4,9 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from own_your_data.database.helpers import finalize_import
-from own_your_data.database.helpers import get_auto_column_expressions
-from own_your_data.database.helpers import import_csv
+from own_your_data.charts.import_file import finalize_import
+from own_your_data.charts.import_file import get_auto_column_expressions
+from own_your_data.charts.import_file import import_csv
 
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 

@@ -3,6 +3,9 @@ import re
 from duckdb import DuckDBPyConnection
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from own_your_data.utils import get_duckdb_conn
+from own_your_data.utils import timeit
+
 
 def cleanup_db(duckdb_conn: DuckDBPyConnection):
     duckdb_conn.execute("drop table  if exists csv_import")
@@ -74,28 +77,10 @@ def finalize_import(duckdb_conn: DuckDBPyConnection, auto_column_expressions: st
     duckdb_conn.execute("create table csv_import_summary_t as SELECT * FROM (SUMMARIZE csv_import_t)")
 
 
-def get_order_clause(column_name: str) -> str:
-    return f"""
-             case "{column_name}"::varchar
-                when 'Monday' then '100'
-                when 'Tuesday' then '101'
-                when 'Wednesday' then '102'
-                when 'Thursday' then '103'
-                when 'Friday' then '104'
-                when 'Saturday' then '105'
-                when 'Sunday' then '106'
-                when 'January' then '107'
-                when 'February' then '108'
-                when 'March' then '109'
-                when 'April' then '110'
-                when 'May' then '111'
-                when 'June' then '112'
-                when 'July' then '113'
-                when 'August' then '114'
-                when 'September' then '115'
-                when 'October' then '116'
-                when 'November' then '117'
-                when 'December' then '118'
-                else '119-'||"{column_name}"::varchar
-             end
-    """
+@timeit
+def import_csv_and_process_data(data_source: UploadedFile) -> DuckDBPyConnection:
+    duckdb_conn = get_duckdb_conn()
+    import_csv(duckdb_conn=duckdb_conn, data_source=data_source)
+    auto_column_expressions = get_auto_column_expressions(duckdb_conn=duckdb_conn)
+    finalize_import(duckdb_conn=duckdb_conn, auto_column_expressions=auto_column_expressions)
+    return duckdb_conn

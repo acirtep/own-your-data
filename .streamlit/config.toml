@@ -3,3 +3,6 @@
 
 [theme]
     font="monospace"
+
+[logger]
+    level="debug"
