@@ -1,11 +1,10 @@
-import streamlit
 import streamlit as st
 
 from own_your_data.charts.charts import BarChart
 from own_your_data.charts.charts import HeatMapChart
 from own_your_data.charts.charts import LineChart
 from own_your_data.charts.charts import SankeyChart
-from own_your_data.charts.constants import DEFAULT_METRIC_COLUMN
+from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.constants import SupportedPlots
 from own_your_data.charts.import_file import cleanup_db
 from own_your_data.charts.import_file import import_csv_and_process_data
@@ -51,9 +50,12 @@ if __name__ == "__main__":
                 """
                 ).fetchall()
             ]
-            numeric_columns.append(DEFAULT_METRIC_COLUMN)
 
             metric_column = st.sidebar.selectbox("Select the metric", numeric_columns)
+
+            aggregation_method = st.sidebar.radio(
+                "Select the aggregation method", SupportedAggregationMethods.list(), horizontal=True, index=0
+            )
 
             with st.expander("Preview data (max 3000)", expanded=True):
                 st.dataframe(duckdb_conn.execute("select * from csv_import_t limit 3000").df(), hide_index=True)
@@ -80,6 +82,7 @@ if __name__ == "__main__":
                         dim_columns=[dim_column],
                         color_column=color_column,
                         orientation=orientation,
+                        aggregation_method=aggregation_method,
                     )
                     fig_plot = bar_chart.plot
                     sql_query = bar_chart.sql_query
@@ -96,6 +99,7 @@ if __name__ == "__main__":
                         dim_columns=flow_columns,
                         color_column=None,
                         orientation=None,
+                        aggregation_method=aggregation_method,
                     )
                     fig_plot = sankey_chart.plot
                     fig_plot.update_traces(arrangement="snap", selector=dict(type="sankey"))
@@ -110,6 +114,7 @@ if __name__ == "__main__":
                         dim_columns=[dim_column],
                         color_column=color_column,
                         orientation=None,
+                        aggregation_method=aggregation_method,
                     )
                     fig_plot = line_chart.plot
                     sql_query = line_chart.sql_query
@@ -123,6 +128,7 @@ if __name__ == "__main__":
                         dim_columns=[x_column],
                         color_column=y_column,
                         orientation=None,
+                        aggregation_method=aggregation_method,
                     )
                     fig_plot = heatmap_chart.plot
                     sql_query = heatmap_chart.sql_query

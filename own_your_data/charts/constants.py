@@ -1,14 +1,24 @@
 from enum import Enum
 
-DEFAULT_METRIC_COLUMN = "Just-Count"
+
+class ExtendedEnum(Enum):
+
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
 
 
-class SupportedPlots(str, Enum):
+class SupportedPlots(str, ExtendedEnum):
     bar = "bar"
     line = "line"
     sankey = "sankey"
     heatmap = "heatmap"
 
-    @classmethod
-    def list(cls):
-        return list(map(lambda c: c.value, cls))
+
+class SupportedAggregationMethods(str, ExtendedEnum):
+    count = "count"
+    sum = "sum"
+    # TODO has to take into account missing data
+    # avg = "avg"
+    # min = "min"
+    # max = "max"

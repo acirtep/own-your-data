@@ -4,7 +4,7 @@ from duckdb import DuckDBPyConnection
 from pandas import DataFrame
 from plotly.graph_objs import Figure
 
-from own_your_data.charts.constants import DEFAULT_METRIC_COLUMN
+from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.helpers import get_order_clause
 from own_your_data.utils import timeit
 
@@ -18,19 +18,22 @@ class BaseChart:
         dim_columns: [str],
         color_column: str | None,
         orientation: str | None,
+        aggregation_method: str = SupportedAggregationMethods.count.value,
     ):
         self.duckdb_conn = duckdb_conn
-        self.metric_column = metric_column or DEFAULT_METRIC_COLUMN
+        self.metric_column = metric_column
         self.dim_columns = dim_columns
         self.color_column = color_column
         self.orientation = orientation
+        self.aggregation_method = aggregation_method
 
-        if self.metric_column == DEFAULT_METRIC_COLUMN:
-            self.agg_expression = "count(*)"
-            self.where_expression = None
-        else:
-            self.agg_expression = f'sum("{metric_column}"::decimal)'
-            self.where_expression = f'where try_cast("{metric_column}" as decimal) is not null'
+        cast_expression = (
+            f'"{metric_column}"'
+            if self.aggregation_method == SupportedAggregationMethods.count
+            else f'try_cast("{metric_column}" as decimal)'
+        )
+        self.agg_expression = f"round({self.aggregation_method}({cast_expression}), 2)"
+        self.where_expression = f"where {cast_expression} is not null"
 
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
