@@ -6,3 +6,6 @@
 
 [logger]
     level="debug"
+
+[client]
+    showSidebarNavigation = false
