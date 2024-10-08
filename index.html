@@ -25,12 +25,13 @@
                 "client.showErrorDetails": false,
                 "browser.gatherUsageStats": false,
                 "server.maxUploadSize": 10,
-                "logger.level": "warning"
+                "logger.level": "warning",
+                "client.showSidebarNavigation": false
             },
-            entrypoint: "own_your_data/home.py",
+            entrypoint: "own_your_data/app.py",
             files: {
-                "own_your_data/home.py": {
-                    url: "own_your_data/home.py",
+                "own_your_data/app.py": {
+                    url: "own_your_data/app.py",
                 },
                 "own_your_data/utils.py": {
                     url: "own_your_data/utils.py",
@@ -50,8 +51,11 @@
                 "own_your_data/charts/import_file.py": {
                     url: "own_your_data/charts/import_file.py",
                 },
-                "own_your_data/pages/generate_charts.py": {
-                    url: "own_your_data/pages/generate_charts.py"
+                "own_your_data/pages/2_generate_charts.py": {
+                    url: "own_your_data/pages/2_generate_charts.py"
+                },
+                "own_your_data/pages/1_home.py": {
+                    url: "own_your_data/pages/1_home.py"
                 },
             },
         },

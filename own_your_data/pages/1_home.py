@@ -1,5 +1,11 @@
 import streamlit as st
 
+from own_your_data.utils import custom_sidebar
+from own_your_data.utils import init_session
+
+custom_sidebar()
+init_session()
+
 st.title("Own Your Data \n on your machine in your browser\n", anchor=False)
 
 st.subheader(

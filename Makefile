@@ -1,5 +1,5 @@
 local_run:
-	streamlit run own_your_data/home.py
+	streamlit run own_your_data/app.py
 
 
 check:
