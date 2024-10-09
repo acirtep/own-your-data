@@ -1,66 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Own Your Data</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.css"/>
+    <style>
+        body {
+            margin-right: 20%;
+            margin-left: 20%;
+            margin-top: 10%;
+            font-size: 18px;
+            font-family: "sans-serif";
+        }
+
+        p {
+            line-height: 2; /* Adjust the line height for spacing */
+            margin: 20px; /* Optional: Add margin for spacing around the paragraph */
+        }
+
+        .expander-container {
+            margin: 20px;
+            gap: 10px; /* Space between buttons */
+        }
+
+        .expander {
+            background-color: #f1f1f1; /* Background color for the button */
+            color: #444; /* Text color */
+            cursor: pointer; /* Cursor changes to pointer when hovering */
+            padding: 10px; /* Padding around the button */
+            border: none; /* No border */
+            text-align: left; /* Align text to the left */
+            outline: none; /* No outline */
+            font-size: 16px; /* Font size */
+            transition: background-color 0.3s; /* Smooth background color transition */
+        }
+
+        .expander:hover {
+            background-color: #ccc; /* Change background color on hover */
+        }
+
+        .content {
+            margin: 20px;
+            padding: 0 10px; /* Padding inside the content area */
+            display: none; /* Hide content by default */
+            overflow: hidden; /* Hide overflow content */
+            background-color: #f9f9f9; /* Background color for the content area */
+        }
+
+    </style>
 </head>
 <body>
-<div id="root"></div>
-<script src="https://cdn.jsdelivr.net/npm/@stlite/mountable/build/stlite.js"></script>
-<script type="text/javascript">
-    stlite.mount(
-        {
-            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js",
-            requirements: [
-                "plotly==5.24.1",
-                "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.1.0-cp312-cp312-pyodide_2024_0_wasm32.whl",
-                "fsspec==2024.9.0",
-                // "sqlalchemy==2.0.35",
-                // "duckdb-engine==0.13.2"
-            ],
-            streamlitConfig: {
-                "client.showErrorDetails": false,
-                "browser.gatherUsageStats": false,
-                "server.maxUploadSize": 10,
-                "logger.level": "warning",
-                "client.showSidebarNavigation": false
-            },
-            entrypoint: "own_your_data/app.py",
-            files: {
-                "own_your_data/app.py": {
-                    url: "own_your_data/app.py",
-                },
-                "own_your_data/utils.py": {
-                    url: "own_your_data/utils.py",
-                },
-                "own_your_data/database/helpers.py": {
-                    url: "own_your_data/database/helpers.py"
-                },
-                "own_your_data/charts/charts.py": {
-                    url: "own_your_data/charts/charts.py",
-                },
-                "own_your_data/charts/constants.py": {
-                    url: "own_your_data/charts/constants.py",
-                },
-                "own_your_data/charts/helpers.py": {
-                    url: "own_your_data/charts/helpers.py",
-                },
-                "own_your_data/charts/import_file.py": {
-                    url: "own_your_data/charts/import_file.py",
-                },
-                "own_your_data/pages/2_generate_charts.py": {
-                    url: "own_your_data/pages/2_generate_charts.py"
-                },
-                "own_your_data/pages/1_home.py": {
-                    url: "own_your_data/pages/1_home.py"
-                },
-            },
-        },
-        document.getElementById("root")
-    );
+<h2>Own Your Data<br>on your machine, in your browser</h2>
+
+<p>
+    As many others, I track relevant habits or different health metrics. For each type of measurement, I need to
+    install yet another application and share my data with a company (and who knows how many third parties!). Tired
+    and confused of all the approvals, I have started recording my data on my computer in files.
+    But how to visualize my data such that I can understand my behaviour? This is where the <b>Own Your Data</b> idea
+    started, and it resulted in a web application, meant to be used by anyone who wants to analyse, privately, their data.
+<br><br>
+    Powered by Pyodide, this platform, written in Python and by using Streamlit, DuckDB and Plotly,
+    enables you to visualize your data seamlessly <b>without sharing your data</b> or needing IT knowledge.
+
+    Read more details below or skip to <a href="#getting-started">getting started</a>!
+</p>
+
+<div class="expander-container">
+    <button class="expander" onclick="toggleContent('about')">About</button>
+    <button class="expander" onclick="toggleContent('python')">What is Python?</button>
+    <button class="expander" onclick="toggleContent('pyodide')">What is Pyodide?</button>
+    <button class="expander" onclick="toggleContent('duckdb')">What is DuckDB?</button>
+    <button class="expander" onclick="toggleContent('plotly')">What is Plotly?</button>
+    <button class="expander" onclick="toggleContent('streamlit')">What is Streamlit?</button>
+
+</div>
+<div id="python" class="content">
+    <p>Python is an accessible and powerful programming language that empowers people to harness the potential of
+        technology, making it easier to solve problems and create innovative solutions. Whether you want to analyze
+        data,
+        build a website, or automate tasks, Python provides the tools to help you achieve your goals.
+        <br>
+        Learn more about Python on the official website: <a href="https://www.python.org/" target="_blank">https://www.python.org/</a>.
+
+    </p>
+
+</div>
+
+
+<div id="pyodide" class="content">
+    <p>Pyodide is a project that allows users to execute Python code directly in web browsers without requiring
+        installation or complex configurations. It provides access to a variety of Python libraries, enabling
+        individuals to perform data analysis, visualize data, and develop applications in an online environment. This
+        tool facilitates coding and computation directly within the browser, making Python programming more accessible
+        to a broader audience.
+        <br>
+        Learn more about Pyodide on the official website: <a href="https://pyodide.org/en" target="_blank">https://pyodide.org/en</a>.
+
+    </p>
+</div>
+
+<div id="duckdb" class="content">
+    <p>DuckDB is an open-source database management system that allows users to run SQL queries directly in their
+        applications without needing a separate server. It is designed for efficient data analysis and can handle large
+        datasets easily. DuckDB supports various data formats, making it suitable for tasks such as data analysis and
+        reporting. Its lightweight and straightforward design allows users to perform data operations quickly and
+        accessibly, making it a practical tool for analyzing structured data.
+        <br>
+        Learn more about DuckDB on the official website: <a href="https://duckdb.org/" target="_blank">https://duckdb.org/</a>.
+
+
+    </p>
+</div>
+
+<div id="plotly" class="content">
+    <p>Plotly is a data visualization library that enables users to create interactive graphs and charts easily. It
+        supports a variety of chart types, such as line plots, bar charts, and scatter plots, allowing users to present
+        data in a clear and engaging way. Plotly is compatible with several programming languages, including Python, R,
+        and JavaScript, making it versatile for different applications. Its interactive features enhance the user
+        experience, enabling viewers to explore data more effectively. Overall, Plotly provides a straightforward way to
+        visualize data and share insights through dynamic visual representations.
+        <br>
+        Learn more about Plotly on the official website: <a href="https://plotly.com/" target="_blank">https://plotly.com/</a>.
+
+
+    </p>
+</div>
+
+<div id="streamlit" class="content">
+    <p>Streamlit is an open-source framework that allows users to create web applications for data science and machine
+        learning projects with minimal effort. It enables users to turn Python scripts into interactive applications,
+        making it easy to share data insights and visualizations. Streamlit supports a variety of components, such as
+        charts, tables, and forms, allowing users to build intuitive interfaces without requiring extensive web
+        development knowledge. Its straightforward syntax and rapid deployment capabilities make it a practical tool for
+        data analysts and researchers to present their work effectively and interactively.
+        <br>
+        Learn more about Streamlit on the official website: <a href="https://streamlit.io/" target="_blank">https://streamlit.io/</a>.
+
+        <br>
+        Streamlit is brought to Pyodide by <a href="https://github.com/whitphx/stlite">stlite</a>.
+
+
+    </p>
+</div>
+
+<div id="about" class="content">
+    <p>
+        This web application is developed under the open source framework and its code is available on <a
+            href="https://github.com/acirtep/own-your-data" target="_blank">github</a>.
+    </p>
+</div>
+
+<br>
+<h3 id="getting-started">Getting started</h3>
+<p>
+    To start exploring your data, open the <a href="app.html" target="_blank">playground</a>.
+    <br>
+    By opening the application, Pyodide will install in the memory of the browser the necessary code in order for you to
+    analyse and visualize your
+    data.
+    When you close the browser, whatever was installed in the browser will be cleaned automatically.
+</p>
+
+
+<script>
+    function toggleContent(contentId) {
+        // Get all content divs
+        const contents = document.querySelectorAll('.content');
+
+        // Hide all content divs
+        contents.forEach(content => {
+            if (content.id !== contentId) {
+                content.style.display = 'none'; // Hide other contents
+            }
+        });
+
+        // Get the selected content
+        const selectedContent = document.getElementById(contentId);
+        // Toggle the display of the selected content
+        selectedContent.style.display = selectedContent.style.display === 'block' ? 'none' : 'block';
+    }
 </script>
 </body>
 </html>

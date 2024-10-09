@@ -5,6 +5,7 @@ from pandas import DataFrame
 from plotly.graph_objs import Figure
 
 from own_your_data.charts.constants import SupportedAggregationMethods
+from own_your_data.charts.constants import SupportedPlots
 from own_your_data.charts.helpers import get_order_clause
 from own_your_data.utils import timeit
 
@@ -42,13 +43,36 @@ class BaseChart:
     @timeit
     def get_sql_query(self) -> str:
         return f"""
-            select
+            with existing_data_cte as (select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
                 "{self.color_column}"
             from csv_import_t
             {self.where_expression}
             group by 2,3
+            ),
+            unique_dim_cte as (select "{self.dim_columns[0]}" from csv_import_t {self.where_expression} group by 1),
+            unique_color_cte as (select "{self.color_column}" from csv_import_t {self.where_expression} group by 1)
+            select "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.color_column}"
+            from (
+                select "{self.metric_column}",
+                    "{self.dim_columns[0]}",
+                    "{self.color_column}"
+                from existing_data_cte
+                union all
+                select distinct null as "{self.metric_column}",
+                    t1."{self.dim_columns[0]}",
+                    t2."{self.color_column}"
+                from unique_dim_cte t1,
+                    unique_color_cte t2
+                where not exists ( select 1
+                    from existing_data_cte s
+                    where t1."{self.dim_columns[0]}" = s."{self.dim_columns[0]}"
+                    and t2."{self.color_column}" = s."{self.color_column}"
+                )
+            )
             order by {get_order_clause(column_name=self.dim_columns[0])},
                 {get_order_clause(column_name=self.color_column)}
         """
@@ -59,6 +83,10 @@ class BaseChart:
 
     @timeit
     def get_plot(self) -> Figure:
+        pass
+
+    @timeit
+    def format_plot(self):
         pass
 
 
@@ -95,8 +123,6 @@ class SankeyChart(BaseChart):
     @timeit
     def get_sql_query(self) -> str:
         dim_col_list = " ,".join([f'"{dim_col}"' for dim_col in self.dim_columns])
-        if len(self.dim_columns) <= 1:
-            raise ValueError("At least 2 dimensions required!")
 
         cubes = ""
         union_cubes = ""
@@ -237,7 +263,7 @@ class SankeyChart(BaseChart):
                 )
             ]
         )
-
+        fig.update_traces(arrangement="snap", selector=dict(type="sankey"))
         return fig
 
 
@@ -261,3 +287,64 @@ class HeatMapChart(BaseChart):
         fig.update_xaxes(side="top")
 
         return fig
+
+
+class ScatterChart(BaseChart):
+
+    @timeit
+    def get_sql_query(self) -> str:
+        return f"""
+            with existing_data_cte as (select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.dim_columns[1]}",
+                "{self.color_column}"
+            from csv_import_t
+            {self.where_expression}
+            group by 2,3,4
+            ),
+            unique_dim_x_cte as (select "{self.dim_columns[0]}" from csv_import_t {self.where_expression} group by 1),
+            unique_dim_y_cte as (select "{self.dim_columns[1]}" from csv_import_t {self.where_expression} group by 1),
+            unique_color_cte as (select "{self.color_column}" from csv_import_t {self.where_expression} group by 1)
+            select {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.dim_columns[1]}",
+                "{self.color_column}"
+            from (
+                select *
+                from existing_data_cte
+                union all
+                select distinct 0 as "{self.metric_column}",
+                    t1."{self.dim_columns[0]}",
+                    t2."{self.dim_columns[1]}",
+                    t3."{self.color_column}"
+                from unique_dim_x_cte t1,
+                    unique_dim_y_cte t2,
+                    unique_color_cte t3
+                where not exists ( select 1
+                    from existing_data_cte s
+                    where t1."{self.dim_columns[0]}" = s."{self.dim_columns[0]}"
+                    and t2."{self.dim_columns[1]}" = s."{self.dim_columns[1]}"
+                    and t3."{self.color_column}" = s."{self.color_column}"
+                )
+            )
+            group by 2,3,4
+            order by {get_order_clause(column_name=self.dim_columns[0])},
+                {get_order_clause(column_name=self.dim_columns[1])},
+                {get_order_clause(column_name=self.color_column)}
+        """
+
+    @timeit
+    def get_plot(self) -> Figure:
+        return px.scatter(
+            self.data, x=self.dim_columns[0], y=self.dim_columns[1], color=self.color_column, size=self.metric_column
+        )
+
+
+PLOT_TYPE_TO_CHART_CLASS = {
+    SupportedPlots.bar: BarChart,
+    SupportedPlots.line: LineChart,
+    SupportedPlots.sankey: SankeyChart,
+    SupportedPlots.heatmap: HeatMapChart,
+    SupportedPlots.scatter: ScatterChart,
+}

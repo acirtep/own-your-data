@@ -13,12 +13,12 @@ class SupportedPlots(str, ExtendedEnum):
     line = "line"
     sankey = "sankey"
     heatmap = "heatmap"
+    scatter = "scatter"
 
 
 class SupportedAggregationMethods(str, ExtendedEnum):
     count = "count"
     sum = "sum"
-    # TODO has to take into account missing data
-    # avg = "avg"
-    # min = "min"
-    # max = "max"
+    avg = "avg"
+    min = "min"
+    max = "max"
