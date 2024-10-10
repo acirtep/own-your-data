@@ -23,15 +23,3 @@ def timeit(func):
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
     return duckdb.connect()
-
-
-def init_session():
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = time.time()
-        st.switch_page("pages/1_home.py")
-
-
-def custom_sidebar():
-    st.set_page_config(layout="wide")
-    st.sidebar.page_link("pages/1_home.py", label="Home")
-    st.sidebar.page_link("pages/2_generate_charts.py", label="Charts")

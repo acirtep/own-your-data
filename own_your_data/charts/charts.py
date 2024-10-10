@@ -1,10 +1,13 @@
+from dataclasses import dataclass
+from itertools import chain
+
 import plotly.express as px
 import plotly.graph_objects as go
 from duckdb import DuckDBPyConnection
-from pandas import DataFrame
 from plotly.graph_objs import Figure
 
 from own_your_data.charts.constants import SupportedAggregationMethods
+from own_your_data.charts.constants import SupportedPlots
 from own_your_data.charts.helpers import get_order_clause
 from own_your_data.utils import timeit
 
@@ -37,10 +40,21 @@ class BaseChart:
 
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
+        self.category_orders = self.get_category_orders()
         self.plot = self.get_plot()
 
     @timeit
     def get_sql_query(self) -> str:
+        if not self.color_column:
+            return f"""
+                select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}"
+            from csv_import_t
+            {self.where_expression}
+            group by 2
+            order by {get_order_clause(self.dim_columns[0])}
+            """
         return f"""
             select
                 {self.agg_expression} as "{self.metric_column}",
@@ -49,16 +63,61 @@ class BaseChart:
             from csv_import_t
             {self.where_expression}
             group by 2,3
-            order by {get_order_clause(column_name=self.dim_columns[0])},
-                {get_order_clause(column_name=self.color_column)}
+            order by {get_order_clause(self.dim_columns[0])},
+                {get_order_clause(self.color_column)}
         """
 
     @timeit
-    def get_data(self) -> DataFrame:
+    def get_data(self):
         return self.duckdb_conn.execute(self.sql_query).df()
+
+    def _get_order(self, ordered_list):
+        category_order = {}
+        for column in chain(self.dim_columns, [self.color_column], [self.metric_column]):
+            if self.duckdb_conn.execute(
+                f"""
+                        select *
+                        from csv_import_summary_t
+                        where column_name = '{column}'
+                        and min in {ordered_list}
+                    """
+            ).fetchall():
+                category_order[column] = ordered_list
+        return category_order
+
+    def get_week_day_order(self):
+        return self._get_order(
+            ordered_list=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        )
+
+    def get_month_order(self):
+        return self._get_order(
+            ordered_list=[
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]
+        )
+
+    @timeit
+    def get_category_orders(self):
+        return {**self.get_week_day_order(), **self.get_month_order()}
 
     @timeit
     def get_plot(self) -> Figure:
+        pass
+
+    @timeit
+    def format_plot(self):
         pass
 
 
@@ -73,6 +132,7 @@ class BarChart(BaseChart):
                 y=self.metric_column,
                 orientation=self.orientation,
                 color=self.color_column,
+                category_orders=self.category_orders,
             )
         return px.bar(
             data_frame=self.data,
@@ -80,6 +140,7 @@ class BarChart(BaseChart):
             y=self.dim_columns[0],
             orientation=self.orientation,
             color=self.color_column,
+            category_orders=self.category_orders,
         )
 
 
@@ -87,7 +148,13 @@ class LineChart(BaseChart):
 
     @timeit
     def get_plot(self) -> Figure:
-        return px.line(data_frame=self.data, x=self.dim_columns[0], y=self.metric_column, color=self.color_column)
+        return px.line(
+            data_frame=self.data,
+            x=self.dim_columns[0],
+            y=self.metric_column,
+            color=self.color_column,
+            category_orders=self.category_orders,
+        )
 
 
 class SankeyChart(BaseChart):
@@ -95,8 +162,6 @@ class SankeyChart(BaseChart):
     @timeit
     def get_sql_query(self) -> str:
         dim_col_list = " ,".join([f'"{dim_col}"' for dim_col in self.dim_columns])
-        if len(self.dim_columns) <= 1:
-            raise ValueError("At least 2 dimensions required!")
 
         cubes = ""
         union_cubes = ""
@@ -237,7 +302,7 @@ class SankeyChart(BaseChart):
                 )
             ]
         )
-
+        fig.update_traces(arrangement="snap", selector=dict(type="sankey"))
         return fig
 
 
@@ -261,3 +326,64 @@ class HeatMapChart(BaseChart):
         fig.update_xaxes(side="top")
 
         return fig
+
+
+class ScatterChart(BaseChart):
+
+    @timeit
+    def get_sql_query(self) -> str:
+        if not self.color_column:
+            return f"""
+                select
+                    {self.agg_expression} as "{self.metric_column}",
+                    "{self.dim_columns[0]}",
+                    "{self.dim_columns[1]}"
+                from csv_import_t
+                {self.where_expression}
+                group by 2,3
+            """
+        return f"""
+            select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.dim_columns[1]}",
+                "{self.color_column}"
+            from csv_import_t
+            {self.where_expression}
+            group by 2,3,4
+        """
+
+    @timeit
+    def get_plot(self) -> Figure:
+        return px.scatter(
+            self.data,
+            x=self.dim_columns[0],
+            y=self.dim_columns[1],
+            color=self.color_column,
+            size=self.metric_column,
+            category_orders=self.category_orders,
+        )
+
+
+PLOT_TYPE_TO_CHART_CLASS = {
+    SupportedPlots.bar: BarChart,
+    SupportedPlots.line: LineChart,
+    SupportedPlots.sankey: SankeyChart,
+    SupportedPlots.heatmap: HeatMapChart,
+    SupportedPlots.scatter: ScatterChart,
+}
+
+
+@dataclass
+class ChartConfiguration:
+    plot_type: SupportedPlots
+    aggregation_method: SupportedAggregationMethods
+    metric_column: str
+    dim_columns: list[str]
+    color_column: str | None
+    orientation: str | None
+    title: str
+    x_label: str
+    y_label: str
+    height: int
+    width: int
