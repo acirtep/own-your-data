@@ -12,7 +12,6 @@ from own_your_data.utils import timeit
 def cleanup_db(file_id):
     duckdb_conn = get_duckdb_conn()
     duckdb_conn.execute("drop table  if exists csv_import")
-    duckdb_conn.execute("drop table  if exists csv_import_summary")
     duckdb_conn.execute("drop table  if exists csv_import_t")
     duckdb_conn.execute("drop table  if exists csv_import_summary_t")
 
@@ -27,7 +26,6 @@ def import_uploaded_file(data_source: UploadedFile, file_id):
     duckdb_conn = get_duckdb_conn()
     imported_data = duckdb_conn.read_csv(data_source, store_rejects=True)  # NOQA
     duckdb_conn.execute("create table csv_import as select * from imported_data")
-    duckdb_conn.execute("create table csv_import_summary as SELECT * FROM (SUMMARIZE csv_import)")
 
 
 def get_auto_column_expressions() -> list[str]:

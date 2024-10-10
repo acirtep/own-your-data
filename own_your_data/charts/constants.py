@@ -11,14 +11,14 @@ class ExtendedEnum(Enum):
 class SupportedPlots(str, ExtendedEnum):
     bar = "bar"
     line = "line"
-    sankey = "sankey"
     heatmap = "heatmap"
     scatter = "scatter"
+    sankey = "sankey"
 
 
 class SupportedAggregationMethods(str, ExtendedEnum):
-    count = "count"
     sum = "sum"
+    count = "count"
     avg = "avg"
     min = "min"
     max = "max"

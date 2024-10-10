@@ -37,7 +37,6 @@ def test_import_file(duckdb_conn, file_id):
             import_uploaded_file(data_source=BytesIO(f.read().encode()), file_id=file_id)
 
     assert duckdb_conn.sql("select * from csv_import")
-    assert duckdb_conn.sql("select * from csv_import_summary")
 
 
 def test_get_auto_column_expressions(duckdb_conn_with_initial_csv_data):
@@ -60,7 +59,6 @@ def test_finalize_import(duckdb_conn_with_initial_csv_data):
 
     with pytest.raises(duckdb.CatalogException):
         duckdb_conn_with_initial_csv_data.sql("select * from csv_import")
-        duckdb_conn_with_initial_csv_data.sql("select * from csv_import_summary")
 
     assert duckdb_conn_with_initial_csv_data.sql("select * from csv_import_t")
     assert duckdb_conn_with_initial_csv_data.sql("select * from csv_import_summary_t")

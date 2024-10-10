@@ -19,7 +19,7 @@ def get_sidebar_chart_configuration(file_id) -> ChartConfiguration | None:
         )
 
         aggregation_method = st.radio(
-            "Calculation method", SupportedAggregationMethods.list(), horizontal=True, index=1
+            "Calculation method", SupportedAggregationMethods.list(), horizontal=True, index=0
         )
 
         requirements_met = False

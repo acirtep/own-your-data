@@ -36,7 +36,7 @@ if __name__ == "__main__":
             random_store() as store,
             random_price() as "amount in EuR"
           from
-          range(date '2022-01-31 00:00:00', date '2024-12-31 00:00:00', interval '28' hour)    ,
+          range(date '2024-01-31 00:00:00', date '2024-12-31 00:00:00', interval '28' hour)    ,
           generate_series(1, 1)) to '{file_path}'
         """
     )
