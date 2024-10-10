@@ -1,4 +1,4 @@
-register_date,category,store,price now
+register_date,category,store,amount in EuR
 2022-01-31 00:00:00,ALCOHOL,WALMART,1.09
 2022-01-31 01:00:00,ALCOHOL,WALMART,4.41
 2022-01-31 02:00:00,FOOD,CARREFOUR,3.98

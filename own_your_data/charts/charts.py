@@ -1,7 +1,9 @@
+from dataclasses import dataclass
+from itertools import chain
+
 import plotly.express as px
 import plotly.graph_objects as go
 from duckdb import DuckDBPyConnection
-from pandas import DataFrame
 from plotly.graph_objs import Figure
 
 from own_your_data.charts.constants import SupportedAggregationMethods
@@ -38,48 +40,77 @@ class BaseChart:
 
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
+        self.category_orders = self.get_category_orders()
         self.plot = self.get_plot()
 
     @timeit
     def get_sql_query(self) -> str:
+        if not self.color_column:
+            return f"""
+                select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}"
+            from csv_import_t
+            {self.where_expression}
+            group by 2
+            order by {get_order_clause(self.dim_columns[0])}
+            """
         return f"""
-            with existing_data_cte as (select
+            select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
                 "{self.color_column}"
             from csv_import_t
             {self.where_expression}
             group by 2,3
-            ),
-            unique_dim_cte as (select "{self.dim_columns[0]}" from csv_import_t {self.where_expression} group by 1),
-            unique_color_cte as (select "{self.color_column}" from csv_import_t {self.where_expression} group by 1)
-            select "{self.metric_column}",
-                "{self.dim_columns[0]}",
-                "{self.color_column}"
-            from (
-                select "{self.metric_column}",
-                    "{self.dim_columns[0]}",
-                    "{self.color_column}"
-                from existing_data_cte
-                union all
-                select distinct null as "{self.metric_column}",
-                    t1."{self.dim_columns[0]}",
-                    t2."{self.color_column}"
-                from unique_dim_cte t1,
-                    unique_color_cte t2
-                where not exists ( select 1
-                    from existing_data_cte s
-                    where t1."{self.dim_columns[0]}" = s."{self.dim_columns[0]}"
-                    and t2."{self.color_column}" = s."{self.color_column}"
-                )
-            )
-            order by {get_order_clause(column_name=self.dim_columns[0])},
-                {get_order_clause(column_name=self.color_column)}
+            order by {get_order_clause(self.dim_columns[0])},
+                {get_order_clause(self.color_column)}
         """
 
     @timeit
-    def get_data(self) -> DataFrame:
+    def get_data(self):
         return self.duckdb_conn.execute(self.sql_query).df()
+
+    def _get_order(self, ordered_list):
+        category_order = {}
+        for column in chain(self.dim_columns, [self.color_column], [self.metric_column]):
+            if self.duckdb_conn.execute(
+                f"""
+                        select *
+                        from csv_import_summary_t
+                        where column_name = '{column}'
+                        and min in {ordered_list}
+                    """
+            ).fetchall():
+                category_order[column] = ordered_list
+        return category_order
+
+    def get_week_day_order(self):
+        return self._get_order(
+            ordered_list=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        )
+
+    def get_month_order(self):
+        return self._get_order(
+            ordered_list=[
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ]
+        )
+
+    @timeit
+    def get_category_orders(self):
+        return {**self.get_week_day_order(), **self.get_month_order()}
 
     @timeit
     def get_plot(self) -> Figure:
@@ -101,6 +132,7 @@ class BarChart(BaseChart):
                 y=self.metric_column,
                 orientation=self.orientation,
                 color=self.color_column,
+                category_orders=self.category_orders,
             )
         return px.bar(
             data_frame=self.data,
@@ -108,6 +140,7 @@ class BarChart(BaseChart):
             y=self.dim_columns[0],
             orientation=self.orientation,
             color=self.color_column,
+            category_orders=self.category_orders,
         )
 
 
@@ -115,7 +148,13 @@ class LineChart(BaseChart):
 
     @timeit
     def get_plot(self) -> Figure:
-        return px.line(data_frame=self.data, x=self.dim_columns[0], y=self.metric_column, color=self.color_column)
+        return px.line(
+            data_frame=self.data,
+            x=self.dim_columns[0],
+            y=self.metric_column,
+            color=self.color_column,
+            category_orders=self.category_orders,
+        )
 
 
 class SankeyChart(BaseChart):
@@ -293,8 +332,18 @@ class ScatterChart(BaseChart):
 
     @timeit
     def get_sql_query(self) -> str:
+        if not self.color_column:
+            return f"""
+                select
+                    {self.agg_expression} as "{self.metric_column}",
+                    "{self.dim_columns[0]}",
+                    "{self.dim_columns[1]}"
+                from csv_import_t
+                {self.where_expression}
+                group by 2,3
+            """
         return f"""
-            with existing_data_cte as (select
+            select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
                 "{self.dim_columns[1]}",
@@ -302,42 +351,17 @@ class ScatterChart(BaseChart):
             from csv_import_t
             {self.where_expression}
             group by 2,3,4
-            ),
-            unique_dim_x_cte as (select "{self.dim_columns[0]}" from csv_import_t {self.where_expression} group by 1),
-            unique_dim_y_cte as (select "{self.dim_columns[1]}" from csv_import_t {self.where_expression} group by 1),
-            unique_color_cte as (select "{self.color_column}" from csv_import_t {self.where_expression} group by 1)
-            select {self.agg_expression} as "{self.metric_column}",
-                "{self.dim_columns[0]}",
-                "{self.dim_columns[1]}",
-                "{self.color_column}"
-            from (
-                select *
-                from existing_data_cte
-                union all
-                select distinct 0 as "{self.metric_column}",
-                    t1."{self.dim_columns[0]}",
-                    t2."{self.dim_columns[1]}",
-                    t3."{self.color_column}"
-                from unique_dim_x_cte t1,
-                    unique_dim_y_cte t2,
-                    unique_color_cte t3
-                where not exists ( select 1
-                    from existing_data_cte s
-                    where t1."{self.dim_columns[0]}" = s."{self.dim_columns[0]}"
-                    and t2."{self.dim_columns[1]}" = s."{self.dim_columns[1]}"
-                    and t3."{self.color_column}" = s."{self.color_column}"
-                )
-            )
-            group by 2,3,4
-            order by {get_order_clause(column_name=self.dim_columns[0])},
-                {get_order_clause(column_name=self.dim_columns[1])},
-                {get_order_clause(column_name=self.color_column)}
         """
 
     @timeit
     def get_plot(self) -> Figure:
         return px.scatter(
-            self.data, x=self.dim_columns[0], y=self.dim_columns[1], color=self.color_column, size=self.metric_column
+            self.data,
+            x=self.dim_columns[0],
+            y=self.dim_columns[1],
+            color=self.color_column,
+            size=self.metric_column,
+            category_orders=self.category_orders,
         )
 
 
@@ -348,3 +372,18 @@ PLOT_TYPE_TO_CHART_CLASS = {
     SupportedPlots.heatmap: HeatMapChart,
     SupportedPlots.scatter: ScatterChart,
 }
+
+
+@dataclass
+class ChartConfiguration:
+    plot_type: SupportedPlots
+    aggregation_method: SupportedAggregationMethods
+    metric_column: str
+    dim_columns: list[str]
+    color_column: str | None
+    orientation: str | None
+    title: str
+    x_label: str
+    y_label: str
+    height: int
+    width: int

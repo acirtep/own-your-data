@@ -8,9 +8,9 @@
         body {
             margin-right: 20%;
             margin-left: 20%;
-            margin-top: 10%;
+            margin-top: 5%;
             font-size: 18px;
-            font-family: "sans-serif";
+            font-family: Garamond, serif;
         }
 
         p {
@@ -33,6 +33,7 @@
             outline: none; /* No outline */
             font-size: 16px; /* Font size */
             transition: background-color 0.3s; /* Smooth background color transition */
+            /*font-family: "sans-serif";*/
         }
 
         .expander:hover {
@@ -54,17 +55,19 @@
 
 <p>
     As many others, I track relevant habits or different health metrics. For each type of measurement, I need to
-    install yet another application and share my data with a company (and who knows how many third parties!). Tired
-    and confused of all the approvals, I have started recording my data on my computer in files.
+    install yet another application and share my data with a company (and who knows with how many third parties!). Tired
+    and confused of so many terms of privacy and cookies approvals, I have started recording my data on my computer in
+    files.
     But how to visualize my data such that I can understand my behaviour? This is where the <b>Own Your Data</b> idea
-    started, and it resulted in a web application, meant to be used by anyone who wants to analyse, privately, their data.
-<br><br>
+    started, and it resulted in a web application, meant to be used by anyone who wants to analyse, privately, their
+    data.
+    <br><br>
     Powered by Pyodide, this platform, written in Python and by using Streamlit, DuckDB and Plotly,
     enables you to visualize your data seamlessly <b>without sharing your data</b> or needing IT knowledge.
-
     Read more details below or skip to <a href="#getting-started">getting started</a>!
-</p>
 
+</p>
+<br>
 <div class="expander-container">
     <button class="expander" onclick="toggleContent('about')">About</button>
     <button class="expander" onclick="toggleContent('python')">What is Python?</button>
@@ -156,9 +159,8 @@
     To start exploring your data, open the <a href="app.html" target="_blank">playground</a>.
     <br>
     By opening the application, Pyodide will install in the memory of the browser the necessary code in order for you to
-    analyse and visualize your
-    data.
-    When you close the browser, whatever was installed in the browser will be cleaned automatically.
+    analyse and visualize your data. When you close the page or the browser, everything you have done on the web page
+    will be automatically cleaned-up.
 </p>
 
 

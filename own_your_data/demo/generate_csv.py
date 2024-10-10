@@ -34,9 +34,9 @@ if __name__ == "__main__":
         copy (select range::datetime as register_date,
             random_category() as category,
             random_store() as store,
-            random_price() as "price now"
+            random_price() as "amount in EuR"
           from
-          range(date '2022-01-31 00:00:00', date '2024-12-31 00:00:00', interval '1' hour)    ,
+          range(date '2022-01-31 00:00:00', date '2024-12-31 00:00:00', interval '28' hour)    ,
           generate_series(1, 1)) to '{file_path}'
         """
     )

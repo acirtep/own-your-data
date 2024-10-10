@@ -1,6 +1,7 @@
 import streamlit as st
 
 from own_your_data.charts.charts import PLOT_TYPE_TO_CHART_CLASS
+from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.constants import SupportedPlots
 from own_your_data.utils import get_duckdb_conn
 
@@ -12,7 +13,7 @@ def get_cached_plot(
     dim_columns: [str],
     color_column: str | None,
     orientation: str | None,
-    aggregation_method: str,
+    aggregation_method: SupportedAggregationMethods,
 ):
     duckdb_conn = get_duckdb_conn()
     chart_class = PLOT_TYPE_TO_CHART_CLASS.get(plot_type)

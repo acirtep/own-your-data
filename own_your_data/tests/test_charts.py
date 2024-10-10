@@ -1,5 +1,7 @@
+import uuid
 from io import BytesIO
 from pathlib import Path
+from unittest import mock
 
 import duckdb
 import pytest
@@ -10,9 +12,9 @@ from own_your_data.charts.charts import LineChart
 from own_your_data.charts.charts import SankeyChart
 from own_your_data.charts.charts import ScatterChart
 from own_your_data.charts.constants import SupportedAggregationMethods
-from own_your_data.charts.import_file import finalize_import
-from own_your_data.charts.import_file import get_auto_column_expressions
-from own_your_data.charts.import_file import import_csv
+from own_your_data.components.import_file import finalize_import
+from own_your_data.components.import_file import get_auto_column_expressions
+from own_your_data.components.import_file import import_uploaded_file
 
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 
@@ -20,10 +22,11 @@ test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 @pytest.fixture(scope="module")
 def duckdb_conn_with_final_csv_data():
     duckdb_conn = duckdb.connect()
-    with open(test_file_path, "r") as f:
-        import_csv(duckdb_conn=duckdb_conn, data_source=BytesIO(f.read().encode()))
-        auto_column_expressions = get_auto_column_expressions(duckdb_conn=duckdb_conn)
-        finalize_import(duckdb_conn=duckdb_conn, auto_column_expressions=auto_column_expressions)
+    with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
+        with open(test_file_path, "r") as f:
+            import_uploaded_file(data_source=BytesIO(f.read().encode()), file_id=uuid.uuid4())
+            auto_column_expressions = get_auto_column_expressions()
+            finalize_import(auto_column_expressions=auto_column_expressions)
     return duckdb_conn
 
 
@@ -31,7 +34,7 @@ def duckdb_conn_with_final_csv_data():
 def test_generate_bar_chart(duckdb_conn_with_final_csv_data, aggregation):
     bar_chart = BarChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
-        metric_column="Price Now",
+        metric_column="Amount In EUR",
         dim_columns=["Register Date Date Auto"],
         color_column="Register Date Day Name Auto",
         orientation="h",
@@ -46,7 +49,7 @@ def test_generate_bar_chart(duckdb_conn_with_final_csv_data, aggregation):
 def test_generate_sankey_chart(duckdb_conn_with_final_csv_data, aggregation):
     sankey_chart = SankeyChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
-        metric_column="Price Now",
+        metric_column="Amount In EUR",
         dim_columns=["Register Date Month Name Auto", "Register Date Day Name Auto"],
         color_column=None,
         orientation=None,
@@ -66,7 +69,7 @@ def test_generate_sankey_chart(duckdb_conn_with_final_csv_data, aggregation):
 def test_generate_line_chart(duckdb_conn_with_final_csv_data, aggregation):
     line_chart = LineChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
-        metric_column="Price Now",
+        metric_column="Amount In EUR",
         dim_columns=["Register Date Date Auto"],
         color_column="Register Date Day Name Auto",
         orientation=None,
@@ -81,7 +84,7 @@ def test_generate_line_chart(duckdb_conn_with_final_csv_data, aggregation):
 def test_generate_heatmap_chart(duckdb_conn_with_final_csv_data, aggregation):
     heatmap_chart = HeatMapChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
-        metric_column="Price Now",
+        metric_column="Amount In EUR",
         dim_columns=["Register Date Day Name Auto"],
         color_column="Register Date Month Name Auto",
         orientation=None,
@@ -97,7 +100,7 @@ def test_generate_heatmap_chart(duckdb_conn_with_final_csv_data, aggregation):
 def test_generate_scatter_chart(duckdb_conn_with_final_csv_data, aggregation):
     scatter_chart = ScatterChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
-        metric_column="Price Now",
+        metric_column="Amount In EUR",
         dim_columns=["Register Date Day Name Auto", "Register Date Month Name Auto"],
         color_column="Store",
         orientation=None,
