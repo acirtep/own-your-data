@@ -10,7 +10,7 @@ from own_your_data.utils import get_duckdb_conn
 
 
 def main():
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="wide", page_title="Own Your Data Playground")
     st.title(
         "Own Your Data \n on your machine, in your browser [🔎source code](https://github.com/acirtep/own-your-data)",
         anchor=False,
