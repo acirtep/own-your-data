@@ -29,7 +29,8 @@ def get_charts_components(chart_configuration: ChartConfiguration):
     if chart_configuration.y_label:
         fig_plot.update_layout(yaxis_title=chart_configuration.y_label)
 
-    with st.expander("SQL query for plot"):
+    with st.expander("SQL query generated"):
+        st.info("This is the SQL query generated based on your input in the sidebar")
         st.code(sql_query)
 
     st.plotly_chart(fig_plot, use_container_width=False)

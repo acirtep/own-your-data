@@ -25,4 +25,4 @@ Install Python 3.12 or greater
 ### Miscellaneous
 
 #### Generate synthetic data
-1. Run app locally and execute `make demo_csv`
+1. Run app locally and execute `make demo_file`
