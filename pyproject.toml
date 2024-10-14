@@ -14,6 +14,8 @@ plotly = "^5.24.1"
 fsspec = "^2024.9.0"
 sqlalchemy = "^2.0.35"
 duckdb-engine = "^0.13.2"
+streamlit-code-editor = "^0.1.21"
+sqlparse = "^0.5.1"
 
 
 [tool.poetry.group.dev.dependencies]

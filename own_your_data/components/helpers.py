@@ -14,6 +14,7 @@ def get_cached_plot(
     color_column: str | None,
     orientation: str | None,
     aggregation_method: SupportedAggregationMethods,
+    table_name: str,
 ):
     duckdb_conn = get_duckdb_conn()
     chart_class = PLOT_TYPE_TO_CHART_CLASS.get(plot_type)
@@ -28,4 +29,5 @@ def get_cached_plot(
         color_column=color_column,
         orientation=orientation,
         aggregation_method=aggregation_method,
+        table_name=table_name,
     )

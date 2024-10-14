@@ -22,3 +22,4 @@ class SupportedAggregationMethods(str, ExtendedEnum):
     avg = "avg"
     min = "min"
     max = "max"
+    none = "none"

@@ -14,7 +14,7 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        st.info(f"{func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms")
+        print(f"{func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms")
         return result
 
     return timeit_wrapper
@@ -22,4 +22,38 @@ def timeit(func):
 
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect()
+    duckdb_conn = duckdb.connect()
+    duckdb_conn.execute("create sequence file_import_metadata_seq start 1")
+    duckdb_conn.execute(
+        """
+        create table file_import_metadata(
+            id integer default nextval('file_import_metadata_seq'),
+            file_name varchar,
+            table_name varchar,
+            start_import_datetime timestamp,
+            end_import_datetime timestamp
+        )
+    """
+    )
+    return duckdb_conn
+
+
+def get_tables():
+    duckdb_conn = get_duckdb_conn()
+    return [
+        table[0]
+        for table in duckdb_conn.execute(
+            """
+                select src.table_name from
+                    information_schema.tables src
+                left join (select table_name,
+                            end_import_datetime
+                            from file_import_metadata
+                            where end_import_datetime is not null
+                            qualify row_number() over (partition by table_name order by id desc) = 1
+                        ) fm
+                    on src.table_name = fm.table_name
+                order by src.table_name
+                """
+        ).fetchall()
+    ]

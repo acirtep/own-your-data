@@ -1776,6 +1776,22 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
+name = "sqlparse"
+version = "0.5.1"
+description = "A non-validating SQL parser."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sqlparse-0.5.1-py3-none-any.whl", hash = "sha256:773dcbf9a5ab44a090f3441e2180efe2560220203dc2f8c0b0fa141e18b505e4"},
+    {file = "sqlparse-0.5.1.tar.gz", hash = "sha256:bb6b4df465655ef332548e24f08e205afc81b9ab86cb1c45657a7ff173a3a00e"},
+]
+
+[package.extras]
+dev = ["build", "hatch"]
+doc = ["sphinx"]
+
+[[package]]
 name = "streamlit"
 version = "1.39.0"
 description = "A faster way to build and share data apps"
@@ -1810,6 +1826,21 @@ watchdog = {version = ">=2.1.5,<6", markers = "platform_system != \"Darwin\""}
 
 [package.extras]
 snowflake = ["snowflake-connector-python (>=2.8.0)", "snowflake-snowpark-python[modin] (>=1.17.0)"]
+
+[[package]]
+name = "streamlit-code-editor"
+version = "0.1.21"
+description = "React-ace editor customized for Streamlit"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "streamlit-code-editor-0.1.21.tar.gz", hash = "sha256:5a4d2a3644b1cc84415d94a5a4383804170d41bd553a2afdaabc4309341e3677"},
+    {file = "streamlit_code_editor-0.1.21-py3-none-any.whl", hash = "sha256:8d4142b60c71d24a19d88f99cbb40213dd5818ebdddb4e1feeb8ff2c28cd0b7a"},
+]
+
+[package.dependencies]
+streamlit = ">=0.63"
 
 [[package]]
 name = "tenacity"
@@ -1974,4 +2005,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "0172fc2333546158f9fcf1ebf5168534b16849991248ecb3947d9b80c3c49c76"
+content-hash = "53524d89773487b59c3fae84d858e3d76e6b86244ff51ef213739d104a6442a1"

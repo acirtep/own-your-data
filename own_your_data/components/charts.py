@@ -12,6 +12,7 @@ def get_charts_components(chart_configuration: ChartConfiguration):
         color_column=chart_configuration.color_column,
         orientation=chart_configuration.orientation,
         aggregation_method=chart_configuration.aggregation_method,
+        table_name=chart_configuration.table_name,
     )
 
     fig_plot = chart_object.plot

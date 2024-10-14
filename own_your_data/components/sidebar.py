@@ -6,20 +6,23 @@ from own_your_data.charts.constants import SupportedPlots
 from own_your_data.components.data_analysis import get_columns
 
 
-def get_sidebar_chart_configuration(file_id) -> ChartConfiguration | None:
+def get_sidebar_chart_configuration(table_name: str) -> ChartConfiguration | None:
 
-    columns = get_columns(file_id)
+    columns = get_columns(table_name=table_name)
+    if len(columns) < 2:
+        st.sidebar.warning("The table chosen has only one column, the recommendation is to have at least two columns.")
 
-    with st.sidebar.expander("Configure the chart", expanded=True):
+    with st.sidebar.expander("Configure the chart"):
         plot_type = st.radio(
             "Type",
             SupportedPlots.list(),
             horizontal=True,
             help="Type of plots, read more about them on [Plotly](https://plotly.com/python/plotly-fundamentals/)",
+            key="plot_type",
         )
 
         aggregation_method = st.radio(
-            "Calculation method", SupportedAggregationMethods.list(), horizontal=True, index=0
+            "Calculation method", SupportedAggregationMethods.list(), horizontal=True, index=0, key="aggregation_method"
         )
 
         requirements_met = False
@@ -48,6 +51,7 @@ def get_sidebar_chart_configuration(file_id) -> ChartConfiguration | None:
                     help="h=horizontal, v=vertical, default h",
                     horizontal=True,
                     index=1,
+                    key="orientation",
                 )
 
                 if all([metric_column, x_column]):
@@ -135,4 +139,5 @@ def get_sidebar_chart_configuration(file_id) -> ChartConfiguration | None:
         color_column=color_column,
         metric_column=metric_column,
         orientation=orientation,
+        table_name=table_name,
     )

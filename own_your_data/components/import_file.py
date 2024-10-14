@@ -1,42 +1,65 @@
 import re
+from io import BytesIO
+from pathlib import Path
 
 import streamlit
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from own_your_data.charts.helpers import get_order_clause
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import timeit
 
 
-@streamlit.cache_resource
-def cleanup_db(file_id):
+def cleanup_db(table_name):
     duckdb_conn = get_duckdb_conn()
-    duckdb_conn.execute("drop table  if exists csv_import")
-    duckdb_conn.execute("drop table  if exists csv_import_t")
-    duckdb_conn.execute("drop table  if exists csv_import_summary_t")
+    duckdb_conn.execute(f"drop table  if exists {table_name}")
 
 
 def clean_column_name(column_name: str) -> str:
     return " ".join(re.sub("[^A-Za-z0-9 ]+", " ", column_name).title().split())
 
 
+def get_table_name(file_name: str) -> str:
+    cleaned_table_name = "_".join(re.sub("[^A-Za-z0-9 ]+", " ", file_name).split())
+    return f"file_{cleaned_table_name}"
+
+
 @timeit
 @streamlit.cache_resource
-def import_uploaded_file(data_source: UploadedFile, file_id):
+def import_uploaded_file(data_source: UploadedFile, table_name, file_id):
     duckdb_conn = get_duckdb_conn()
     imported_data = duckdb_conn.read_csv(data_source, store_rejects=True)  # NOQA
-    duckdb_conn.execute("create table csv_import as select * from imported_data")
+    duckdb_conn.execute(f"create table {table_name} as select * from imported_data")
+
+    try:
+        duckdb_conn.execute(
+            f"""
+            insert into file_import_metadata
+            (file_name, table_name, start_import_datetime)
+                values
+            ('{data_source.name}', '{table_name}_t', current_timestamp)
+        """
+        )
+
+    except AttributeError:
+        duckdb_conn.execute(
+            f"""
+                    insert into file_import_metadata
+                    (file_name, table_name, start_import_datetime)
+                        values
+                    ('demo_file.txt', '{table_name}_t', current_timestamp)
+                """
+        )
 
 
-def get_auto_column_expressions() -> list[str]:
+def get_auto_column_expressions(table_name) -> list[str]:
     # from timestamp to date
     # from date to year, month name, day name
     duckdb_conn = get_duckdb_conn()
     date_related_columns = duckdb_conn.execute(
-        """
+        f"""
         select column_name, case when data_type like 'TIMESTAMP%' then true else false end is_timestamp
         from duckdb_columns
-        where table_name='csv_import'
+        where table_name='{table_name}'
         and (data_type = 'DATE' or data_type like 'TIMESTAMP%')
         """
     ).fetchall()
@@ -59,53 +82,68 @@ def get_auto_column_expressions() -> list[str]:
     return auto_column_expressions
 
 
-def finalize_import(auto_column_expressions: list[str]):
+@timeit
+@streamlit.cache_resource
+def process_imported_data(table_name, file_id):
     duckdb_conn = get_duckdb_conn()
+    auto_column_expressions = get_auto_column_expressions(table_name=table_name)
     column_selection = [
         f'"{column[0]}" as "{" ".join(re.sub("[^A-Za-z0-9 ]+", " ", column[0]).title().split())}"'
         for column in duckdb_conn.execute(
-            "select column_name from duckdb_columns where table_name='csv_import'"
+            f"select column_name from duckdb_columns where table_name='{table_name}'"
         ).fetchall()
     ]
     column_selection.extend(auto_column_expressions)
 
     duckdb_conn.execute(
         f"""
-        create table csv_import_t as
+        create table {table_name}_t as
         select {','.join(column_selection)}
-        from csv_import it
+        from {table_name} it
     """
-    )
-
-    unique_values_query = " union all ".join(
-        [
-            f"""select '{column[0]}' as column_name,
-                array_agg(distinct "{column[0]}" order by {get_order_clause(column[0])}) as unique_value
-                from csv_import_t
-            """
-            for column in duckdb_conn.execute(
-                "select column_name from duckdb_columns where table_name='csv_import_t'"
-            ).fetchall()
-        ]
     )
 
     duckdb_conn.execute(
-        f"""create table csv_import_summary_t as
-            with unique_values_cte as (
-                {unique_values_query}
-            )
-                select t.* , string_agg(uvc.unique_value[:50], ',') as first_50_unique_values
-                from (SUMMARIZE csv_import_t) t
-                    left join unique_values_cte uvc on t.column_name = uvc.column_name
-                group by all
+        f"""
+        update file_import_metadata
+            set end_import_datetime = current_timestamp
+        where table_name = '{table_name}_t'
+        and id = (select max(id) from file_import_metadata where table_name = '{table_name}_t')
     """
     )
 
-    duckdb_conn.execute("drop table csv_import")
+    #
+    # unique_values_query = " union all ".join(
+    #     [
+    #         f"""select '{column[0]}' as column_name,
+    #             array_agg(distinct "{column[0]}" order by {get_order_clause(column[0])}) as unique_value
+    #             from csv_import_t
+    #         """
+    #         for column in duckdb_conn.execute(
+    #             "select column_name from duckdb_columns where table_name='csv_import_t'"
+    #         ).fetchall()
+    #     ]
+    # )
+    #
+    # duckdb_conn.execute(
+    #     f"""create table csv_import_summary_t as
+    #         with unique_values_cte as (
+    #             {unique_values_query}
+    #         )
+    #             select t.* , string_agg(uvc.unique_value[:50], ',') as first_50_unique_values
+    #             from (SUMMARIZE csv_import_t) t
+    #                 left join unique_values_cte uvc on t.column_name = uvc.column_name
+    #             group by all
+    # """
+    # )
+    #
+    duckdb_conn.execute(f"drop table {table_name}")
 
 
-@timeit
 @streamlit.cache_resource
-def process_file(file_id):
-    auto_column_expressions = get_auto_column_expressions()
-    finalize_import(auto_column_expressions=auto_column_expressions)
+def import_demo_file(session_id):
+    with open(f"{Path(__file__).parent.parent}/demo/demo_file.txt", "r") as demo_file:
+        table_name = get_table_name("demo_file.txt")
+        cleanup_db(table_name=f"{table_name}_t")
+        import_uploaded_file(data_source=BytesIO(demo_file.read().encode()), table_name=table_name, file_id=session_id)
+        process_imported_data(table_name=table_name, file_id=session_id)

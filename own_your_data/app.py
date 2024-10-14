@@ -1,28 +1,25 @@
 import uuid
-from io import BytesIO
-from pathlib import Path
 
 import streamlit as st
 
 from own_your_data.components.charts import get_charts_components
+from own_your_data.components.data_analysis import get_code_editor
 from own_your_data.components.data_analysis import get_data_analysis_components
 from own_your_data.components.import_file import cleanup_db
+from own_your_data.components.import_file import get_table_name
+from own_your_data.components.import_file import import_demo_file
 from own_your_data.components.import_file import import_uploaded_file
-from own_your_data.components.import_file import process_file
+from own_your_data.components.import_file import process_imported_data
 from own_your_data.components.sidebar import get_sidebar_chart_configuration
 from own_your_data.utils import get_duckdb_conn
+from own_your_data.utils import get_tables
 
 
-def get_components(file_name, file_id, data):
+def get_components_for_table(table_name):
     try:
-        st.header(f"Data analysis of {file_name}", anchor=False)
-        cleanup_db(file_id=file_id)
-        import_uploaded_file(data_source=data, file_id=file_id)
-        process_file(file_id=file_id)
-        get_data_analysis_components(file_id=file_id)
-        sidebar_chart_configuration = get_sidebar_chart_configuration(file_id=file_id)
+        sidebar_chart_configuration = get_sidebar_chart_configuration(table_name=table_name)
         if not sidebar_chart_configuration:
-            st.error("Please configure the chart in the sidebar area!")
+            pass
         else:
             get_charts_components(chart_configuration=sidebar_chart_configuration)
     except Exception as error:  # NOQA everything can go wrong
@@ -38,28 +35,52 @@ def main():
 
     get_duckdb_conn()
 
-    if "data_imported" not in st.session_state:
-        st.session_state.data_imported = False
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = uuid.uuid4()
+
+    import_demo_file(session_id=st.session_state.session_id)
+
+    if "table_options" not in st.session_state:
+        st.session_state.table_options = get_tables()
+        st.session_state.index_option = 0
 
     with st.sidebar.expander("Import data"):
-        data_source = st.file_uploader("Upload file", type=["csv", "txt"])
+        data_source = st.file_uploader("Upload a file", type=["csv", "txt"])
         st.info(
-            "The demo file is available at \
+            "A demo file is available at \
              [github](https://github.com/acirtep/own-your-data/blob/main/own_your_data/demo/demo_file.txt)"
         )
-    if data_source:
-        st.session_state.data_imported = True
-        get_components(file_name=data_source.name, file_id=data_source.file_id, data=data_source)
-        st.session_state.data_imported = True
 
-    if not st.session_state.data_imported:
-        st.warning(
-            "The below data is based on demo data, you can play with it in the sidebar or \
-        start analysing your data by importing it in the sidebar"
-        )
-        with open(f"{Path(__file__).parent}/demo/demo_file.txt") as demo_file:
-            demo_data = BytesIO(demo_file.read().encode())
-            get_components(file_name="demo_file.csv", file_id=uuid.uuid4(), data=demo_data)
+    if data_source:
+
+        table_name = get_table_name(data_source.name)
+        final_table_name = f"{table_name}_t"
+        try:
+            cleanup_db(table_name=final_table_name)
+            import_uploaded_file(data_source=data_source, table_name=table_name, file_id=data_source.file_id)
+            process_imported_data(table_name=table_name, file_id=data_source.file_id)
+            st.success(f"File {data_source.name} successfully imported into {final_table_name} table")
+            st.session_state.table_options = get_tables()
+            st.session_state.index_option = st.session_state.table_options.index(final_table_name)
+        except Exception as error:  # NOQA everything can go wrong
+            st.error(f"Something went wrong {error}")
+
+    selected_table = st.sidebar.selectbox(
+        "Pick a table",
+        options=st.session_state.table_options,
+        index=st.session_state.index_option,
+        disabled=data_source is not None,
+    )
+
+    data_tab, code_tab = st.tabs(["Data Visualization", "SQL editor"])
+    with code_tab:
+        get_code_editor()
+
+    with data_tab:
+        if selected_table:
+            st.subheader(f"Data analysis of {selected_table} table")
+            get_data_analysis_components(table_name=selected_table)
+            get_components_for_table(table_name=selected_table)
 
 
 if __name__ == "__main__":
