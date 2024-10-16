@@ -1,6 +1,7 @@
 import re
 from io import BytesIO
 from pathlib import Path
+from typing import IO
 
 import streamlit
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -25,30 +26,19 @@ def get_table_name(file_name: str) -> str:
 
 @timeit
 @streamlit.cache_resource
-def import_uploaded_file(data_source: UploadedFile, table_name, file_id):
+def import_uploaded_file(_data_source: list[UploadedFile] | list[IO[bytes]], table_name, file_id, file_name):
     duckdb_conn = get_duckdb_conn()
-    imported_data = duckdb_conn.read_csv(data_source, store_rejects=True)  # NOQA
+    imported_data = duckdb_conn.read_csv(_data_source, store_rejects=True)  # NOQA
     duckdb_conn.execute(f"create table {table_name} as select * from imported_data")
 
-    try:
-        duckdb_conn.execute(
-            f"""
-            insert into file_import_metadata
-            (file_name, table_name, start_import_datetime)
-                values
-            ('{data_source.name}', '{table_name}_t', current_timestamp)
-        """
-        )
-
-    except AttributeError:
-        duckdb_conn.execute(
-            f"""
-                    insert into file_import_metadata
-                    (file_name, table_name, start_import_datetime)
-                        values
-                    ('demo_file.txt', '{table_name}_t', current_timestamp)
-                """
-        )
+    duckdb_conn.execute(
+        f"""
+        insert into file_import_metadata
+        (file_name, table_name, start_import_datetime)
+            values
+        ('{file_name}', '{table_name}_t', current_timestamp)
+    """
+    )
 
 
 def get_auto_column_expressions(table_name) -> list[str]:
@@ -145,5 +135,10 @@ def import_demo_file(session_id):
     with open(f"{Path(__file__).parent.parent}/demo/demo_file.txt", "r") as demo_file:
         table_name = get_table_name("demo_file.txt")
         cleanup_db(table_name=f"{table_name}_t")
-        import_uploaded_file(data_source=BytesIO(demo_file.read().encode()), table_name=table_name, file_id=session_id)
+        import_uploaded_file(
+            _data_source=BytesIO(demo_file.read().encode()),
+            table_name=table_name,
+            file_id=session_id,
+            file_name="demo_file.txt",
+        )
         process_imported_data(table_name=table_name, file_id=session_id)

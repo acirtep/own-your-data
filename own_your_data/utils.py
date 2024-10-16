@@ -35,6 +35,24 @@ def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
         )
     """
     )
+    duckdb_conn.execute(
+        """
+        create table calendar_t
+        as
+         select range AS calendar_date,
+            year(calendar_date) as calendar_year,
+            month(calendar_date) as calendar_month,
+            monthname(calendar_date) as calendar_month_name,
+            day(calendar_date) as calendar_day,
+            dayname(calendar_date) as calendar_day_name,
+            case
+                when quarter(calendar_date) =1 and  weekofyear(calendar_date) > 50 then 1
+                else weekofyear(calendar_date)
+            end as calendar_week_of_year,
+            quarter(calendar_date) as calendar_quarter
+         from range('2000-01-01'::date, current_date + 365, INTERVAL 1 DAY)
+    """
+    )
     return duckdb_conn
 
 

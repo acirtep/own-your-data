@@ -26,14 +26,24 @@ def final_table_name(table_name):
 def duckdb_conn_with_initial_csv_data(duckdb_conn, file_id, table_name):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
         with open(test_file_path, "r") as f:
-            import_uploaded_file(data_source=BytesIO(f.read().encode()), table_name=table_name, file_id=file_id)
+            import_uploaded_file(
+                _data_source=BytesIO(f.read().encode()),
+                table_name=table_name,
+                file_id=file_id,
+                file_name="test_csv.csv",
+            )
         return duckdb_conn
 
 
 def test_import_file(duckdb_conn, file_id, table_name):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
         with open(test_file_path, "r") as f:
-            import_uploaded_file(data_source=BytesIO(f.read().encode()), table_name=table_name, file_id=file_id)
+            import_uploaded_file(
+                _data_source=BytesIO(f.read().encode()),
+                table_name=table_name,
+                file_id=file_id,
+                file_name="test_csv.csv",
+            )
 
     assert duckdb_conn.sql(f"select * from {table_name}")
 

@@ -1,4 +1,5 @@
 import uuid
+from zipfile import ZipFile
 
 import streamlit as st
 
@@ -45,25 +46,51 @@ def main():
         st.session_state.index_option = 0
 
     with st.sidebar.expander("Import data"):
-        data_source = st.file_uploader("Upload a file", type=["csv", "txt"])
+        data_source = st.file_uploader("Upload a file", type=["csv", "txt", "zip"])
         st.info(
             "A demo file is available at \
              [github](https://github.com/acirtep/own-your-data/blob/main/own_your_data/demo/demo_file.txt)"
         )
 
     if data_source:
-
         table_name = get_table_name(data_source.name)
         final_table_name = f"{table_name}_t"
         try:
             cleanup_db(table_name=final_table_name)
-            import_uploaded_file(data_source=data_source, table_name=table_name, file_id=data_source.file_id)
+            if data_source.type == "application/zip":
+                with ZipFile(data_source) as imported_zip:
+                    import_uploaded_file(
+                        _data_source=[
+                            imported_zip.open(file)
+                            for file in imported_zip.namelist()
+                            if file.endswith((".csv", ".txt"))
+                        ],
+                        table_name=table_name,
+                        file_id=data_source.file_id,
+                        file_name=data_source.name,
+                    )
+            else:
+                import_uploaded_file(
+                    _data_source=[data_source],
+                    table_name=table_name,
+                    file_id=data_source.file_id,
+                    file_name=data_source.name,
+                )
             process_imported_data(table_name=table_name, file_id=data_source.file_id)
             st.success(f"File {data_source.name} successfully imported into {final_table_name} table")
             st.session_state.table_options = get_tables()
             st.session_state.index_option = st.session_state.table_options.index(final_table_name)
         except Exception as error:  # NOQA everything can go wrong
             st.error(f"Something went wrong {error}")
+
+    data_viz_tab, code_tab = st.tabs(
+        [
+            "Data visualization",
+            "SQL editor",
+        ]
+    )
+    with code_tab:
+        get_code_editor(code_page="on_code_tab")
 
     selected_table = st.sidebar.selectbox(
         "Pick a table",
@@ -72,11 +99,7 @@ def main():
         disabled=data_source is not None,
     )
 
-    data_tab, code_tab = st.tabs(["Data Visualization", "SQL editor"])
-    with code_tab:
-        get_code_editor()
-
-    with data_tab:
+    with data_viz_tab:
         if selected_table:
             st.subheader(f"Data analysis of {selected_table} table")
             get_data_analysis_components(table_name=selected_table)
