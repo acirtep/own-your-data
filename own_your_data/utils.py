@@ -3,6 +3,9 @@ from functools import wraps
 
 import duckdb
 import streamlit as st
+from streamlit.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def timeit(func):
@@ -14,7 +17,7 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print(f"{func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms")
+        logger.debug(f"{func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms")
         return result
 
     return timeit_wrapper

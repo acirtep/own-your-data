@@ -27,16 +27,15 @@ def final_table_name(table_name):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def duckdb_conn_with_final_csv_data(table_name, file_id, duckdb_conn):
+def duckdb_conn_with_final_csv_data(table_name, duckdb_conn):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
         with open(test_file_path, "r") as f:
             import_uploaded_file(
-                _data_source=BytesIO(f.read().encode()),
+                data_source=BytesIO(f.read().encode()),
                 table_name=table_name,
-                file_id=file_id,
                 file_name="test_csv.csv",
             )
-            process_imported_data(table_name, file_id)
+            process_imported_data(table_name)
     return duckdb_conn
 
 

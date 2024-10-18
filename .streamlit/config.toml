@@ -1,9 +1,6 @@
 [browser]
     gatherUsageStats = false
 
-[theme]
-    font="monospace"
-
 [logger]
     level="debug"
 

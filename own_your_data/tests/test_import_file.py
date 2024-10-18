@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 from duckdb import CatalogException
 
+from own_your_data.components.import_file import cleanup_db
 from own_your_data.components.import_file import get_auto_column_expressions
 from own_your_data.components.import_file import import_uploaded_file
 from own_your_data.components.import_file import process_imported_data
@@ -23,25 +24,24 @@ def final_table_name(table_name):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def duckdb_conn_with_initial_csv_data(duckdb_conn, file_id, table_name):
+def duckdb_conn_with_initial_csv_data(duckdb_conn, table_name):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
         with open(test_file_path, "r") as f:
             import_uploaded_file(
-                _data_source=BytesIO(f.read().encode()),
+                data_source=BytesIO(f.read().encode()),
                 table_name=table_name,
-                file_id=file_id,
                 file_name="test_csv.csv",
             )
         return duckdb_conn
 
 
-def test_import_file(duckdb_conn, file_id, table_name):
+def test_import_file(duckdb_conn, table_name):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn):
+        cleanup_db(table_name)
         with open(test_file_path, "r") as f:
             import_uploaded_file(
-                _data_source=BytesIO(f.read().encode()),
+                data_source=BytesIO(f.read().encode()),
                 table_name=table_name,
-                file_id=file_id,
                 file_name="test_csv.csv",
             )
 
@@ -59,11 +59,11 @@ def test_get_auto_column_expressions(duckdb_conn_with_initial_csv_data, table_na
     assert '"register_date"::date as "Register Date Date Auto"' in auto_column_expressions
 
 
-def test_process_imported_data(duckdb_conn_with_initial_csv_data, table_name, file_id, final_table_name):
+def test_process_imported_data(duckdb_conn_with_initial_csv_data, table_name, final_table_name):
     with mock.patch(
         "own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn_with_initial_csv_data
     ):
-        process_imported_data(table_name, file_id)
+        process_imported_data(table_name)
 
     with pytest.raises(CatalogException):
         duckdb_conn_with_initial_csv_data.sql(f"select * from {table_name}")

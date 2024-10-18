@@ -2,6 +2,7 @@ import re
 from io import BytesIO
 from pathlib import Path
 from typing import IO
+from zipfile import ZipFile
 
 import streamlit
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -21,14 +22,19 @@ def clean_column_name(column_name: str) -> str:
 
 def get_table_name(file_name: str) -> str:
     cleaned_table_name = "_".join(re.sub("[^A-Za-z0-9 ]+", " ", file_name).split())
-    return f"file_{cleaned_table_name}"
+    return f"file_{cleaned_table_name.lower()}"
 
 
 @timeit
-@streamlit.cache_resource
-def import_uploaded_file(_data_source: list[UploadedFile] | list[IO[bytes]], table_name, file_id, file_name):
+def get_unzipped_data(data_source: UploadedFile) -> list[IO[bytes]]:
+    with ZipFile(data_source) as imported_zip:
+        return [imported_zip.open(file) for file in imported_zip.namelist() if file.endswith((".csv", ".txt"))]
+
+
+@timeit
+def import_uploaded_file(data_source: list[UploadedFile] | list[IO[bytes]], table_name, file_name):
     duckdb_conn = get_duckdb_conn()
-    imported_data = duckdb_conn.read_csv(_data_source, store_rejects=True)  # NOQA
+    imported_data = duckdb_conn.read_csv(data_source)  # NOQA
     duckdb_conn.execute(f"create table {table_name} as select * from imported_data")
 
     duckdb_conn.execute(
@@ -73,8 +79,7 @@ def get_auto_column_expressions(table_name) -> list[str]:
 
 
 @timeit
-@streamlit.cache_resource
-def process_imported_data(table_name, file_id):
+def process_imported_data(table_name):
     duckdb_conn = get_duckdb_conn()
     auto_column_expressions = get_auto_column_expressions(table_name=table_name)
     column_selection = [
@@ -136,9 +141,8 @@ def import_demo_file(session_id):
         table_name = get_table_name("demo_file.txt")
         cleanup_db(table_name=f"{table_name}_t")
         import_uploaded_file(
-            _data_source=BytesIO(demo_file.read().encode()),
+            data_source=BytesIO(demo_file.read().encode()),
             table_name=table_name,
-            file_id=session_id,
             file_name="demo_file.txt",
         )
-        process_imported_data(table_name=table_name, file_id=session_id)
+        process_imported_data(table_name=table_name)
