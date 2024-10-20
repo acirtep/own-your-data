@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import IO
 from zipfile import ZipFile
 
-import streamlit
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from own_your_data.utils import get_duckdb_conn
@@ -135,8 +134,7 @@ def process_imported_data(table_name):
     duckdb_conn.execute(f"drop table {table_name}")
 
 
-@streamlit.cache_resource
-def import_demo_file(session_id):
+def import_demo_file():
     with open(f"{Path(__file__).parent.parent}/demo/demo_file.txt", "r") as demo_file:
         table_name = get_table_name("demo_file.txt")
         cleanup_db(table_name=f"{table_name}_t")

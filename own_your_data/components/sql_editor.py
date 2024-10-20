@@ -1,5 +1,7 @@
 import streamlit as st
 from code_editor import code_editor
+from duckdb.duckdb import FatalException
+from duckdb.duckdb import InternalException
 from sqlparse import split as split_sql
 
 from own_your_data.utils import get_duckdb_conn
@@ -13,15 +15,19 @@ def execute_sql(sql_editor):
         duckdb_conn = get_duckdb_conn()
         for statement in split_sql(sql_editor.get("selected") or sql_query):
             try:
-                st.dataframe(duckdb_conn.execute(statement).df(), hide_index=True, height=200, use_container_width=True)
+                df = duckdb_conn.execute(statement).df()
+                st.dataframe(df, hide_index=True, height=200, use_container_width=True)
+            except (InternalException, FatalException):
+                st.error("There is a fatal error in duckdb, the above SQL cannot be executed!")
+                duckdb_conn.close()
+                get_duckdb_conn.clear()
             except Exception as error:
                 st.error(error)
-
         st.session_state.table_options = get_tables()
 
 
 def display_duckdb_catalog():
-    st.subheader("Data Catalogue")
+    st.subheader("Data Catalogue", anchor=False)
     search = st.text_input("Search for a table or column")
     duckdb_conn = get_duckdb_conn()
     if not search:
@@ -47,7 +53,7 @@ def display_duckdb_catalog():
 
 
 def get_code_editor():
-    st.subheader("Code Editor")
+    st.subheader("Code Editor", anchor=False)
     #
     # _, button_col = st.columns([10, 1])
     #

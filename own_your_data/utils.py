@@ -1,5 +1,6 @@
 import time
 from functools import wraps
+from pathlib import Path
 
 import duckdb
 import streamlit as st
@@ -25,7 +26,11 @@ def timeit(func):
 
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
-    duckdb_conn = duckdb.connect()
+    return duckdb.connect(f"{Path(__file__).parent}/own_your_data.db")
+
+
+def initial_load():
+    duckdb_conn = get_duckdb_conn()
     duckdb_conn.execute("create sequence file_import_metadata_seq start 1")
     duckdb_conn.execute(
         """
