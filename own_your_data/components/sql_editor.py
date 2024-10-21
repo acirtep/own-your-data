@@ -5,10 +5,12 @@ from code_editor import code_editor
 from duckdb.duckdb import FatalException
 from duckdb.duckdb import InternalException
 from sqlparse import format as format_sql
-from sqlparse import split as split_sql
+from sqlparse import parse
+from sqlparse.sql import Identifier
 
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
+from own_your_data.utils import insert_database_size
 
 
 @st.cache_resource(hash_funcs={dict: lambda response: response.get("id")})
@@ -16,9 +18,17 @@ def execute_sql(sql_editor):
     if sql_editor.get("type") == "submit":
         sql_query = sql_editor.get("text")
         duckdb_conn = get_duckdb_conn()
-        for statement in split_sql(sql_editor.get("selected") or sql_query):
+        for statement in parse(sql_editor.get("selected") or sql_query):
+            if statement.get_type() in ["DROP", "ALTER"]:
+                table_name = [a.get_name() for a in statement.get_sublists() if isinstance(a, Identifier)]
+                if list(
+                    {"file_import_metadata", "calendar_t", "database_size_monitoring"}.intersection(set(table_name))
+                ):
+                    st.error(f"You are not allowed to modify {table_name[0]} table!")
+                    continue
             try:
-                df = duckdb_conn.execute(statement).df()
+                df = duckdb_conn.execute(str(statement)).df()
+                insert_database_size()
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
             except (InternalException, FatalException):
                 st.error("There is a fatal error in duckdb, the below SQL cannot be executed!")
@@ -89,7 +99,7 @@ def get_code_editor():
         code="-- write your SQL here \n-- there is no limit added to select statements \n",
         lang="sql",
         buttons=execution_buttons,
-        completions=[{"caption": table, "value": table} for table in st.session_state.table_options],
+        # completions=[{"caption": table, "value": table} for table in st.session_state.table_options],
         allow_reset=True,
         key="sql-editor",
     )

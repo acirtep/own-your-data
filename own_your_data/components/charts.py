@@ -1,6 +1,7 @@
 import streamlit as st
 
 from own_your_data.charts.charts import ChartConfiguration
+from own_your_data.charts.constants import SupportedPlots
 from own_your_data.components.helpers import get_cached_plot
 
 
@@ -29,6 +30,30 @@ def get_charts_components(chart_configuration: ChartConfiguration):
         fig_plot.update_layout(xaxis_title=chart_configuration.x_label)
     if chart_configuration.y_label:
         fig_plot.update_layout(yaxis_title=chart_configuration.y_label)
+
+    if chart_configuration.plot_type == SupportedPlots.line:
+        fig_plot.update_xaxes(
+            rangeslider_visible=False,
+            rangeselector=dict(
+                buttons=list(
+                    [
+                        dict(count=14, label="2w", step="day", stepmode="backward"),
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=3, label="3m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(count=1, label="1y", step="year", stepmode="backward"),
+                        dict(step="all"),
+                    ]
+                )
+            ),
+        )
+        fig_plot.update_layout(
+            template="plotly_dark",
+            xaxis_rangeselector_font_color="black",
+            xaxis_rangeselector_activecolor="rgb(228, 241, 225)",
+            xaxis_rangeselector_bgcolor="rgb(99, 166, 160)",
+        )
 
     st.plotly_chart(fig_plot, use_container_width=True)
 

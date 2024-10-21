@@ -13,6 +13,7 @@ from own_your_data.components.import_file import import_uploaded_file
 from own_your_data.components.import_file import process_imported_data
 from own_your_data.components.sql_editor import display_duckdb_catalog
 from own_your_data.components.sql_editor import get_code_editor
+from own_your_data.components.system_info import get_system_info
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
 from own_your_data.utils import initial_load
@@ -21,25 +22,31 @@ st.set_page_config(layout="wide", page_title="Own Your Data Playground")
 st.title(
     "Own Your Data \n on your machine, in your browser [🔎source code](https://github.com/acirtep/own-your-data)",
     anchor=False,
+    help="""➜Import your data by pressing the :green[**Import Data**] button
+    ➜Configure your charts in the :green[**Visualize Data**] section
+    ➜Analyze your data with SQL in the :green[**SQL Editor**] section
+    ➜Check out the system information in the :green[**System Information**] section
+    """,
 )
 
 get_duckdb_conn()
-initial_load()
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = uuid.uuid4()
+    initial_load()
     import_demo_file()
+
 
 if "table_options" not in st.session_state:
     st.session_state.table_options = get_tables()
-    st.session_state.index_option = 0
+    st.session_state.index_option = st.session_state.table_options.index("file_demo_file_txt_t")
 
 if "sql_code" not in st.session_state:
     st.session_state.sql_code = None
 
 import_data_col, _, _, _ = st.columns([1, 1, 1, 1], gap="small", vertical_alignment="center")
 
-with import_data_col.popover("Import data", use_container_width=True):
+with import_data_col.popover("Import Data", use_container_width=True):
     with st.form("import data", clear_on_submit=True):
         st.warning("Uploading a file with the same name will result into overwriting the data.")
         data_source = st.file_uploader(
@@ -93,7 +100,7 @@ with import_data_col.popover("Import data", use_container_width=True):
 #             help="Export the database in duckdb format",
 #         )
 
-chart_tab, sql_editor_tab = st.tabs(["Visualize Data", "SQL Editor"])
+chart_tab, sql_editor_tab, system_info_tab = st.tabs(["Visualize Data", "SQL Editor", "System Information"])
 
 with sql_editor_tab:
     with st.container():
@@ -127,3 +134,6 @@ with chart_tab:
                     st.error(f"Something went wrong {error}")
             else:
                 st.warning("Visualize the data as a chart by configuring it on the left side")
+
+with system_info_tab:
+    get_system_info()

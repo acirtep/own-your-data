@@ -26,42 +26,8 @@ def timeit(func):
 
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(f"{Path(__file__).parent}/own_your_data.db")
-
-
-@st.cache_resource
-def initial_load():
-    duckdb_conn = get_duckdb_conn()
-    duckdb_conn.execute("create sequence file_import_metadata_seq start 1")
-    duckdb_conn.execute(
-        """
-        create table file_import_metadata(
-            id integer default nextval('file_import_metadata_seq'),
-            file_name varchar,
-            table_name varchar,
-            start_import_datetime timestamp,
-            end_import_datetime timestamp
-        )
-    """
-    )
-    duckdb_conn.execute(
-        """
-        create table calendar_t
-        as
-         select range AS calendar_date,
-            year(calendar_date) as calendar_year,
-            month(calendar_date) as calendar_month,
-            monthname(calendar_date) as calendar_month_name,
-            day(calendar_date) as calendar_day,
-            dayname(calendar_date) as calendar_day_name,
-            case
-                when quarter(calendar_date) =1 and  weekofyear(calendar_date) > 50 then 1
-                else weekofyear(calendar_date)
-            end as calendar_week_of_year,
-            quarter(calendar_date) as calendar_quarter
-         from range('2000-01-01'::date, current_date + 365, INTERVAL 1 DAY)
-    """
-    )
+    duckdb_conn = duckdb.connect(f"{Path(__file__).parent}/own_your_data.db")
+    duckdb_conn.sql("SET allocator_background_threads=true;")
     return duckdb_conn
 
 
@@ -84,3 +50,83 @@ def get_tables():
                 """
         ).fetchall()
     ]
+
+
+def insert_database_size():
+    duckdb_conn = get_duckdb_conn()
+    db_size_df = duckdb_conn.execute("pragma database_size").df()  # NOQA
+    duckdb_conn.execute(
+        """
+        insert into database_size_monitoring
+        select current_timestamp,
+            case split_part(wal_size, ' ', 2)
+             when 'KiB' then split_part(wal_size, ' ', 1)::numeric / 1024
+             when 'MiB' then split_part(wal_size, ' ', 1):: numeric
+             when 'GiB' then split_part(wal_size, ' ', 1):: numeric * 1024
+            end wal_size,
+            case split_part(memory_usage, ' ', 2)
+             when 'KiB' then split_part(memory_usage, ' ', 1)::numeric / 1024
+             when 'MiB' then split_part(memory_usage, ' ', 1):: numeric
+             when 'GiB' then split_part(memory_usage, ' ', 1):: numeric * 1024
+            end memory_usage
+        from db_size_df
+    """
+    )
+
+
+def gather_database_size(func):
+    @wraps(func)
+    def gather_database_size_wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        insert_database_size()
+        return result
+
+    return gather_database_size_wrapper
+
+
+@gather_database_size
+@st.cache_resource
+def initial_load():
+    duckdb_conn = get_duckdb_conn()
+    duckdb_conn.execute("create sequence file_import_metadata_seq start 1")
+    duckdb_conn.execute(
+        """
+        create table file_import_metadata(
+            id integer default nextval('file_import_metadata_seq'),
+            file_name varchar,
+            table_name varchar,
+            start_import_datetime timestamp,
+            end_import_datetime timestamp
+        )
+    """
+    )
+
+    duckdb_conn.execute(
+        """
+
+        create table database_size_monitoring(
+            observation_timestamp timestamp primary key,
+            wal_size numeric,
+            memory_usage numeric
+        )
+    """
+    )
+    duckdb_conn.execute(
+        """
+        create table calendar_t
+        as
+         select range AS calendar_date,
+            year(calendar_date) as calendar_year,
+            month(calendar_date) as calendar_month,
+            monthname(calendar_date) as calendar_month_name,
+            day(calendar_date) as calendar_day,
+            dayname(calendar_date) as calendar_day_name,
+            case
+                when quarter(calendar_date) =1 and  weekofyear(calendar_date) > 50 then 1
+                else weekofyear(calendar_date)
+            end as calendar_week_of_year,
+            quarter(calendar_date) as calendar_quarter
+         from range('2000-01-01'::date, current_date + 365, INTERVAL 1 DAY)
+    """
+    )
+    return duckdb_conn

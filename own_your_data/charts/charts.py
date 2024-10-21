@@ -165,6 +165,8 @@ class LineChart(BaseChart):
             y=self.metric_column,
             color=self.color_column,
             category_orders=self.category_orders,
+            markers=True,
+            symbol=self.color_column,
         )
 
 
