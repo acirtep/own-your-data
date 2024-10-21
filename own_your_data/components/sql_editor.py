@@ -1,7 +1,10 @@
+import datetime
+
 import streamlit as st
 from code_editor import code_editor
 from duckdb.duckdb import FatalException
 from duckdb.duckdb import InternalException
+from sqlparse import format as format_sql
 from sqlparse import split as split_sql
 
 from own_your_data.utils import get_duckdb_conn
@@ -18,11 +21,14 @@ def execute_sql(sql_editor):
                 df = duckdb_conn.execute(statement).df()
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
             except (InternalException, FatalException):
-                st.error("There is a fatal error in duckdb, the above SQL cannot be executed!")
+                st.error("There is a fatal error in duckdb, the below SQL cannot be executed!")
+                st.code(statement)
                 duckdb_conn.close()
                 get_duckdb_conn.clear()
             except Exception as error:
                 st.error(error)
+
+        st.session_state.sql_code = format_sql(sql_query)
         st.session_state.table_options = get_tables()
 
 
@@ -34,7 +40,7 @@ def display_duckdb_catalog():
         for table in st.session_state.table_options:
             with st.expander(table):
                 for col in duckdb_conn.execute(
-                    f"select column_name from duckdb_columns where table_name = '{table}'"
+                    f"select column_name from duckdb_columns where table_name = '{table}' order by column_name"
                 ).fetchall():
                     st.markdown(f"- {col[0]}")
     else:
@@ -43,25 +49,22 @@ def display_duckdb_catalog():
             select distinct table_name
                 from duckdb_columns
             where column_name ilike '%{search}%' or table_name ilike '%{search}%'
+            order by table_name
         """
         ).fetchall():
             with st.expander(table[0]):
                 for col in duckdb_conn.execute(
-                    f"select column_name from duckdb_columns where table_name = '{table[0]}'"
+                    f"select column_name from duckdb_columns where table_name = '{table[0]}' order by column_name"
                 ).fetchall():
                     st.markdown(f"- {col[0]}")
 
 
 def get_code_editor():
-    st.subheader("Code Editor", anchor=False)
-    #
-    # _, button_col = st.columns([10, 1])
-    #
-    # button_col.download_button(
-    #     "Download code",
-    #     data=format_sql(st.session_state.code_text),
-    #     file_name=f"own_your_data_code_{datetime.datetime.now().isoformat()}.sql",
-    # )
+
+    header_col, _, download_col = st.columns([1, 1, 1])
+
+    with header_col:
+        st.subheader("Editor", anchor=False)
 
     execution_buttons = [
         {
@@ -92,3 +95,12 @@ def get_code_editor():
     )
 
     execute_sql(sql_editor)
+
+    if st.session_state.sql_code:
+        download_col.download_button(
+            "Download code",
+            data=st.session_state.sql_code,
+            file_name=f"own_your_data_code_{datetime.datetime.now().isoformat()}.sql",
+            help="Download the code written in the editor",
+            use_container_width=True,
+        )

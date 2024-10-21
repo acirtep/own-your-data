@@ -29,6 +29,7 @@ def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
     return duckdb.connect(f"{Path(__file__).parent}/own_your_data.db")
 
 
+@st.cache_resource
 def initial_load():
     duckdb_conn = get_duckdb_conn()
     duckdb_conn.execute("create sequence file_import_metadata_seq start 1")

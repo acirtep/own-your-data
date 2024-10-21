@@ -1,6 +1,4 @@
-import datetime
 import uuid
-from pathlib import Path
 
 import streamlit as st
 
@@ -25,21 +23,25 @@ st.title(
     anchor=False,
 )
 
+get_duckdb_conn()
+initial_load()
+
 if "session_id" not in st.session_state:
     st.session_state.session_id = uuid.uuid4()
-    get_duckdb_conn()
-    initial_load()
     import_demo_file()
 
 if "table_options" not in st.session_state:
     st.session_state.table_options = get_tables()
     st.session_state.index_option = 0
 
+if "sql_code" not in st.session_state:
+    st.session_state.sql_code = None
 
-import_data_col, export_data_col = st.columns([1, 1], gap="small", vertical_alignment="center")
+import_data_col, _, _, _ = st.columns([1, 1, 1, 1], gap="small", vertical_alignment="center")
 
-with import_data_col.popover("Import data"):
+with import_data_col.popover("Import data", use_container_width=True):
     with st.form("import data", clear_on_submit=True):
+        st.warning("Uploading a file with the same name will result into overwriting the data.")
         data_source = st.file_uploader(
             "Choose a file",
             type=["csv", "txt", "zip"],
@@ -47,7 +49,6 @@ with import_data_col.popover("Import data"):
             Upload a file in csv or txt format in which you have data you would like to explore. \n
             You can also upload a zip of csv/txt files, they should contain similar data as they will be
             imported in the same table. \n
-            Uploading a file multiple times will result into overwriting the data. \n
             A demo file is available at
              [github](https://github.com/acirtep/own-your-data/blob/main/own_your_data/demo/demo_file.txt)
         """,
@@ -78,18 +79,19 @@ with import_data_col.popover("Import data"):
         except Exception as error:  # NOQA everything can go wrong
             st.error(f"Something went wrong {error}")
 
-
-with export_data_col.popover("Export database"):
-    with open(f"{Path(__file__).parent}/own_your_data.db", "rb") as db:
-        duckdb_conn = get_duckdb_conn()
-        duckdb_conn.close()
-        get_duckdb_conn.clear()
-        st.download_button(
-            "Export database",
-            data=db,
-            file_name=f"own_your_data_{datetime.datetime.now().isoformat()}.db",
-            help="Export the database in duckdb format",
-        )
+# with export_data_col.popover("Export from database"):
+#     st.info("In order to export specific tables, go to `SQL Editor`, do a `select * from` and download the result.\
+#             The functionality to export a selection of tables is under development.")
+#     with open(f"{Path(__file__).parent}/own_your_data.db", "rb") as db:
+#         duckdb_conn = get_duckdb_conn()
+#         duckdb_conn.close()
+#         get_duckdb_conn.clear()
+#         st.download_button(
+#             "Export entire database",
+#             data=db,
+#             file_name=f"own_your_data_{datetime.datetime.now().isoformat()}.db",
+#             help="Export the database in duckdb format",
+#         )
 
 chart_tab, sql_editor_tab = st.tabs(["Visualize Data", "SQL Editor"])
 
@@ -107,7 +109,10 @@ with chart_tab:
         chart_config_col, chart_col = st.columns([1, 3])
         with chart_config_col:
             selected_table = st.selectbox(
-                "Pick a table", options=st.session_state.table_options, index=st.session_state.index_option
+                "Select a table",
+                options=st.session_state.table_options,
+                index=st.session_state.index_option,
+                help="The uploaded files are saved in tables prefixed with `file_`",
             )
 
             if selected_table:
