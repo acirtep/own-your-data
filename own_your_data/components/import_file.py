@@ -6,10 +6,12 @@ from zipfile import ZipFile
 
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
+from own_your_data.utils import gather_database_size
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import timeit
 
 
+@gather_database_size
 def cleanup_db(table_name):
     duckdb_conn = get_duckdb_conn()
     duckdb_conn.execute(f"drop table  if exists {table_name}")
@@ -31,6 +33,7 @@ def get_unzipped_data(data_source: UploadedFile) -> list[IO[bytes]]:
 
 
 @timeit
+@gather_database_size
 def import_uploaded_file(data_source: list[UploadedFile] | list[IO[bytes]], table_name, file_name):
     duckdb_conn = get_duckdb_conn()
     imported_data = duckdb_conn.read_csv(data_source)  # NOQA
@@ -78,6 +81,7 @@ def get_auto_column_expressions(table_name) -> list[str]:
 
 
 @timeit
+@gather_database_size
 def process_imported_data(table_name):
     duckdb_conn = get_duckdb_conn()
     auto_column_expressions = get_auto_column_expressions(table_name=table_name)
