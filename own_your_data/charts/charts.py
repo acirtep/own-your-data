@@ -21,6 +21,7 @@ class BaseChart:
         dim_columns: [str],
         color_column: str | None,
         orientation: str | None,
+        table_name: str,
         aggregation_method: str = SupportedAggregationMethods.count.value,
     ):
         self.duckdb_conn = duckdb_conn
@@ -29,15 +30,20 @@ class BaseChart:
         self.color_column = color_column
         self.orientation = orientation
         self.aggregation_method = aggregation_method
+        self.table_name = table_name
 
         cast_expression = (
             f'"{metric_column}"'
             if self.aggregation_method == SupportedAggregationMethods.count
             else f'try_cast("{metric_column}" as decimal)'
         )
-        self.agg_expression = f"round({self.aggregation_method}({cast_expression}), 2)"
+        self.agg_expression = (
+            f'"{metric_column}"'
+            if self.aggregation_method == SupportedAggregationMethods.none
+            else f"round({self.aggregation_method}({cast_expression}), 2)"
+        )
         self.where_expression = f"where {cast_expression} is not null"
-
+        self.group_by = "" if self.aggregation_method == SupportedAggregationMethods.none else "group by all"
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
         self.category_orders = self.get_category_orders()
@@ -49,20 +55,23 @@ class BaseChart:
             return f"""
                 select
                 {self.agg_expression} as "{self.metric_column}",
-                "{self.dim_columns[0]}"
-            from csv_import_t
+                "{self.dim_columns[0]}",
+                {get_order_clause(self.dim_columns[0])} as "ordered xyz"
+            from {self.table_name}
             {self.where_expression}
-            group by 2
+            {self.group_by}
             order by {get_order_clause(self.dim_columns[0])}
             """
         return f"""
             select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
-                "{self.color_column}"
-            from csv_import_t
+                "{self.color_column}",
+                {get_order_clause(self.dim_columns[0])},
+                {get_order_clause(self.color_column)}
+            from {self.table_name}
             {self.where_expression}
-            group by 2,3
+            {self.group_by}
             order by {get_order_clause(self.dim_columns[0])},
                 {get_order_clause(self.color_column)}
         """
@@ -74,12 +83,14 @@ class BaseChart:
     def _get_order(self, ordered_list):
         category_order = {}
         for column in chain(self.dim_columns, [self.color_column], [self.metric_column]):
+            if not column:
+                continue
             if self.duckdb_conn.execute(
                 f"""
                         select *
-                        from csv_import_summary_t
-                        where column_name = '{column}'
-                        and min in {ordered_list}
+                        from {self.table_name}
+                        where "{column}"::varchar in {ordered_list}
+                        limit 1
                     """
             ).fetchall():
                 category_order[column] = ordered_list
@@ -158,6 +169,29 @@ class LineChart(BaseChart):
 
 
 class SankeyChart(BaseChart):
+    def __init__(
+        self,
+        duckdb_conn: DuckDBPyConnection,
+        metric_column: str,
+        dim_columns: [str],
+        color_column: str | None,
+        orientation: str | None,
+        table_name: str,
+        aggregation_method: str = SupportedAggregationMethods.count.value,
+    ):
+        super().__init__(
+            duckdb_conn=duckdb_conn,
+            metric_column=metric_column,
+            dim_columns=dim_columns,
+            color_column=color_column,
+            orientation=orientation,
+            aggregation_method=(
+                SupportedAggregationMethods.sum.value
+                if aggregation_method == SupportedAggregationMethods.none
+                else aggregation_method
+            ),
+            table_name=table_name,
+        )
 
     @timeit
     def get_sql_query(self) -> str:
@@ -188,7 +222,7 @@ class SankeyChart(BaseChart):
                         {self.agg_expression} as "{self.metric_column}",
                         {dim_col_list},
                        GROUPING_ID({dim_col_list}) AS grouping_set
-                    from csv_import_t
+                    from {self.table_name}
                     {self.where_expression}
                     GROUP BY GROUPING SETS ({cubes})
                 ),
@@ -338,9 +372,9 @@ class ScatterChart(BaseChart):
                     {self.agg_expression} as "{self.metric_column}",
                     "{self.dim_columns[0]}",
                     "{self.dim_columns[1]}"
-                from csv_import_t
+                from {self.table_name}
                 {self.where_expression}
-                group by 2,3
+                {self.group_by}
             """
         return f"""
             select
@@ -348,9 +382,9 @@ class ScatterChart(BaseChart):
                 "{self.dim_columns[0]}",
                 "{self.dim_columns[1]}",
                 "{self.color_column}"
-            from csv_import_t
+            from {self.table_name}
             {self.where_expression}
-            group by 2,3,4
+            {self.group_by}
         """
 
     @timeit
@@ -387,3 +421,4 @@ class ChartConfiguration:
     y_label: str
     height: int
     width: int
+    table_name: str

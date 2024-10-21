@@ -12,6 +12,7 @@ def get_charts_components(chart_configuration: ChartConfiguration):
         color_column=chart_configuration.color_column,
         orientation=chart_configuration.orientation,
         aggregation_method=chart_configuration.aggregation_method,
+        table_name=chart_configuration.table_name,
     )
 
     fig_plot = chart_object.plot
@@ -29,8 +30,8 @@ def get_charts_components(chart_configuration: ChartConfiguration):
     if chart_configuration.y_label:
         fig_plot.update_layout(yaxis_title=chart_configuration.y_label)
 
+    st.plotly_chart(fig_plot, use_container_width=True)
+
     with st.expander("SQL query generated"):
         st.info("This is the SQL query generated based on your input in the sidebar")
         st.code(sql_query)
-
-    st.plotly_chart(fig_plot, use_container_width=False)

@@ -1,5 +1,5 @@
 local_run:
-	streamlit run own_your_data/app.py
+	rm -rf ./own_your_data/own_your_data.db && streamlit run own_your_data/app.py
 
 
 check:
