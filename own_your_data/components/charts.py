@@ -34,9 +34,12 @@ def get_charts_components(chart_configuration: ChartConfiguration):
     if chart_configuration.plot_type == SupportedPlots.line:
         fig_plot.update_xaxes(
             rangeslider_visible=False,
+            rangemode="tozero",
             rangeselector=dict(
                 buttons=list(
                     [
+                        dict(count=1, label="1d", step="day", stepmode="backward"),
+                        dict(count=7, label="1w", step="day", stepmode="backward"),
                         dict(count=14, label="2w", step="day", stepmode="backward"),
                         dict(count=1, label="1m", step="month", stepmode="backward"),
                         dict(count=3, label="3m", step="month", stepmode="backward"),
