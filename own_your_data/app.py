@@ -19,16 +19,19 @@ from own_your_data.utils import get_tables
 from own_your_data.utils import initial_load
 
 st.set_page_config(layout="wide", page_title="Own Your Data Playground")
-st.title(
-    "Own Your Data \n on your machine, in your browser [🔎source code](https://github.com/acirtep/own-your-data)",
-    anchor=False,
-    help="""➜Import your data by pressing the :green[**Import Data**] button
-    ➜Configure your charts in the :green[**Visualize Data**] section
-    ➜Analyze your data with SQL in the :green[**SQL Editor**] section
-    ➜Check out the system information in the :green[**System Information**] section
-    """,
-)
 
+st.markdown(
+    """
+        <h1>
+            Own Your Data
+            <p style="display:inline;font-size:18px">
+                on your machine, in your browser
+            </p>
+        </h1>
+    """,
+    unsafe_allow_html=True,
+)
+st.divider()
 get_duckdb_conn()
 
 if "session_id" not in st.session_state:
@@ -44,9 +47,20 @@ if "table_options" not in st.session_state:
 if "sql_code" not in st.session_state:
     st.session_state.sql_code = None
 
-import_data_col, _, _, _ = st.columns([1, 1, 1, 1], gap="small", vertical_alignment="center")
+about_col, import_data_col, _, _ = st.columns([1, 1, 1, 1], gap="small", vertical_alignment="center")
 
-with import_data_col.popover("Import Data", use_container_width=True):
+with about_col.popover("How To", use_container_width=True, icon="ℹ️"):
+    # pre-commit is removing trailing whitespace, which is not desired in this text
+    st.markdown(
+        f"""➜Import your data by pressing the :green[**Import Data**] button{"  "}
+        ➜Configure your charts in the :green[**Visualize Data**] section{"  "}
+        ➜Analyze your data with SQL in the :green[**SQL Editor**] section{"  "}
+        ➜Check out the system information in the :green[**System Information**] section{"  "}
+        The source code of this application is available on [github](https://github.com/acirtep/own-your-data)
+        """
+    )
+
+with import_data_col.popover("Import Data", use_container_width=True, icon="⬆️"):
     with st.form("import data", clear_on_submit=True):
         st.warning("Uploading a file with the same name will result into overwriting the data.")
         data_source = st.file_uploader(

@@ -165,8 +165,9 @@ class LineChart(BaseChart):
             y=self.metric_column,
             color=self.color_column,
             category_orders=self.category_orders,
-            markers=True,
-            symbol=self.color_column,
+            # Issue in Plotly: https://stackoverflow.com/questions/73321843/plotly-weekly-monthly-range-selector-buttons-not-working-on-time-series-data  # NOQA
+            # markers=True,
+            # symbol=self.color_column,
         )
 
 

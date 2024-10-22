@@ -113,4 +113,5 @@ def get_code_editor():
             file_name=f"own_your_data_code_{datetime.datetime.now().isoformat()}.sql",
             help="Download the code written in the editor",
             use_container_width=True,
+            icon="⬇️",
         )

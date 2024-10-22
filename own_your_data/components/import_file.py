@@ -55,10 +55,18 @@ def get_auto_column_expressions(table_name) -> list[str]:
     duckdb_conn = get_duckdb_conn()
     date_related_columns = duckdb_conn.execute(
         f"""
-        select column_name, case when data_type like 'TIMESTAMP%' then true else false end is_timestamp
-        from duckdb_columns
-        where table_name='{table_name}'
-        and (data_type = 'DATE' or data_type like 'TIMESTAMP%')
+        select column_name,
+            case when data_type like 'TIMESTAMP%' then true else false end is_timestamp
+        from duckdb_columns a
+        where a.table_name='{table_name}'
+        and (a.data_type = 'DATE' or a.data_type like 'TIMESTAMP%')
+        and column_name not like '% Date Auto'
+        and not exists (
+            select 1
+            from duckdb_columns b
+            where a.table_name = b.table_name
+            and b.column_name like concat(a.column_name, ' % Auto')
+        )
         """
     ).fetchall()
 
