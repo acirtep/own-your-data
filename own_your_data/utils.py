@@ -135,7 +135,7 @@ def initial_load():
     return duckdb_conn
 
 
-# @st.cache_resource
+@st.cache_resource
 def get_plotly_colors(plot_color):
 
     if not plot_color:
@@ -158,3 +158,8 @@ def get_plotly_colors(plot_color):
             f'<div style="display:inline;max-width:100%;">{colors_to_html};">&#9632;</div>'
         )
     return color_schemes
+
+
+@st.cache_data
+def cache_duckdb_execution(_duckdb_conn, sql_query):
+    return _duckdb_conn.execute(sql_query).df()

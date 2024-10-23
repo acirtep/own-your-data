@@ -10,6 +10,7 @@ from sqlparse import parse
 from sqlparse.sql import Identifier
 
 from own_your_data.components.chart_configuration import get_cached_plot
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
 from own_your_data.utils import insert_database_size
@@ -37,6 +38,7 @@ def execute_sql(sql_editor):
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
                 if statement.get_type() in ["INSERT", "CREATE"]:
                     get_cached_plot.clear()
+                    cache_duckdb_execution.clear()
             except (InternalException, FatalException):
                 st.error("There is a fatal error in duckdb, the below SQL cannot be executed!")
                 st.code(statement)
@@ -47,6 +49,7 @@ def execute_sql(sql_editor):
 
         st.session_state.sql_code = format_sql(sql_query)
         st.session_state.table_options = get_tables()
+        st.session_state.index_option = None
 
 
 def display_duckdb_catalog():

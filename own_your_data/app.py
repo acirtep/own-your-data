@@ -7,7 +7,6 @@ from own_your_data.components.chart_configuration import get_cached_plot
 from own_your_data.components.chart_configuration import get_chart_configuration
 from own_your_data.components.chart_configuration import get_chart_layout
 from own_your_data.components.chart_configuration import get_charts_components
-from own_your_data.components.data_analysis import get_data_analysis_components
 from own_your_data.components.import_file import cleanup_db
 from own_your_data.components.import_file import get_table_name
 from own_your_data.components.import_file import get_unzipped_data
@@ -17,6 +16,7 @@ from own_your_data.components.import_file import process_imported_data
 from own_your_data.components.sql_editor import display_duckdb_catalog
 from own_your_data.components.sql_editor import get_code_editor
 from own_your_data.components.system_info import get_system_info
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
 from own_your_data.utils import initial_load
@@ -102,6 +102,7 @@ with import_data_col.popover("Import Data", use_container_width=True, icon="â¬†ï
             st.session_state.table_options = get_tables()
             st.session_state.index_option = st.session_state.table_options.index(final_table_name)
             get_cached_plot.clear()
+            cache_duckdb_execution.clear()
         except Exception as error:  # NOQA everything can go wrong
             st.error(f"Something went wrong: {error}")
 
@@ -145,18 +146,18 @@ with chart_tab:
             if selected_table:
                 chart_configuration = get_chart_configuration(table_name=selected_table)
 
-    with chart_col:
-        get_data_analysis_components(table_name=selected_table)
-        if chart_configuration:
-            chart_configuration = get_chart_layout(chart_configuration)
-            try:
-                st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
-                Generating {chart_configuration.plot_type} chart for {chart_configuration.table_name}"
-                get_charts_components(chart_configuration=chart_configuration)
-            except Exception as error:  # NOQA everything can go wrong
-                st.error(f"Something went wrong: {error}")
-        else:
-            st.warning("Visualize the data as a chart by configuring it on the left side")
+                with chart_col:
+                    # get_data_analysis_components(table_name=selected_table)
+                    if chart_configuration:
+                        chart_configuration = get_chart_layout(chart_configuration)
+                        try:
+                            st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
+                            Generating {chart_configuration.plot_type} chart for {chart_configuration.table_name}"
+                            get_charts_components(chart_configuration=chart_configuration)
+                        except Exception as error:  # NOQA everything can go wrong
+                            st.error(f"Something went wrong: {error}")
+                    else:
+                        st.warning("Visualize the data as a chart by configuring it on the left side")
 
 with system_info_tab:
     get_system_info()

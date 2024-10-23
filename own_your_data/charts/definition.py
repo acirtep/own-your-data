@@ -12,6 +12,7 @@ from own_your_data.charts.constants import SECONDARY_COLOR
 from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.constants import SupportedPlots
 from own_your_data.charts.helpers import get_order_clause
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import timeit
 
 
@@ -84,7 +85,7 @@ class BaseChart:
 
     @timeit
     def get_data(self):
-        return self.duckdb_conn.execute(self.sql_query).df()
+        return cache_duckdb_execution(_duckdb_conn=self.duckdb_conn, sql_query=self.sql_query)
 
     def _get_order(self, ordered_list):
         category_order = {}

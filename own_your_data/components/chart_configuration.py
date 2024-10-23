@@ -152,22 +152,21 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
         chart_configuration.title = title_col.text_input("Title", value="Title")
         color_schemes = get_plotly_colors(PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type))
         if color_schemes:
-            with color_col.popover("Choose a color sequence"):
-                selected_color_scheme = st.selectbox(
-                    "Choose a color sequence",
-                    color_schemes.keys(),
-                    index=None,
-                    help="""
-                        Select a color for the charts.
-                        More information on
-                        [Plotly](https://plotly.com/python/discrete-color/#discrete-vs-continuous-color)
-                    """,
+            selected_color_scheme = color_col.selectbox(
+                "Choose a color sequence",
+                color_schemes.keys(),
+                index=None,
+                help="""
+                    Select a color for the charts.
+                    More information on
+                    [Plotly](https://plotly.com/python/discrete-color/#discrete-vs-continuous-color)
+                """,
+            )
+            if selected_color_scheme:
+                # color_col.html(color_schemes.get(selected_color_scheme))
+                chart_configuration.color_scheme = getattr(
+                    PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type), selected_color_scheme
                 )
-                if selected_color_scheme:
-                    st.html(color_schemes.get(selected_color_scheme))
-                    chart_configuration.color_scheme = getattr(
-                        PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type), selected_color_scheme
-                    )
 
         if chart_configuration.plot_type not in [SupportedPlots.sankey]:
             chart_configuration.x_label = x_col.text_input("X-axis label", value=chart_configuration.x_label)
