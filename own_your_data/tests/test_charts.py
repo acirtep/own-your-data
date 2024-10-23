@@ -4,12 +4,12 @@ from unittest import mock
 
 import pytest
 
-from own_your_data.charts.charts import BarChart
-from own_your_data.charts.charts import HeatMapChart
-from own_your_data.charts.charts import LineChart
-from own_your_data.charts.charts import SankeyChart
-from own_your_data.charts.charts import ScatterChart
 from own_your_data.charts.constants import SupportedAggregationMethods
+from own_your_data.charts.definition import BarChart
+from own_your_data.charts.definition import HeatMapChart
+from own_your_data.charts.definition import LineChart
+from own_your_data.charts.definition import SankeyChart
+from own_your_data.charts.definition import ScatterChart
 from own_your_data.components.import_file import import_uploaded_file
 from own_your_data.components.import_file import process_imported_data
 
@@ -73,9 +73,9 @@ def test_generate_sankey_chart(duckdb_conn_with_final_csv_data, aggregation, fin
     labels = fig_plot.data[0]["node"]["label"].tolist()
     assert len(labels) == 7 + 12  # 7 day names and 12 month names
     assert fig_plot.data[0]["node"]["x"][labels.index("January")] == 0.001
-    assert fig_plot.data[0]["node"]["y"][labels.index("January")] == 0.001
+    assert fig_plot.data[0]["node"]["y"][labels.index("January")] == round(1 / 12, 3)
     assert fig_plot.data[0]["node"]["x"][labels.index("Monday")] == 0.5
-    assert fig_plot.data[0]["node"]["y"][labels.index("Monday")] == 0.001
+    assert fig_plot.data[0]["node"]["y"][labels.index("Monday")] == round(1 / 7, 3)
 
 
 @pytest.mark.parametrize("aggregation", SupportedAggregationMethods.list())
@@ -99,8 +99,8 @@ def test_generate_heatmap_chart(duckdb_conn_with_final_csv_data, aggregation, fi
     heatmap_chart = HeatMapChart(
         duckdb_conn=duckdb_conn_with_final_csv_data,
         metric_column="Amount In EUR",
-        dim_columns=["Register Date Day Name Auto"],
-        color_column="Register Date Month Name Auto",
+        dim_columns=["Register Date Day Name Auto", "Register Date Month Name Auto"],
+        color_column=None,
         orientation=None,
         aggregation_method=aggregation,
         table_name=final_table_name,

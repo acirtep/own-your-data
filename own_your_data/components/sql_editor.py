@@ -1,4 +1,5 @@
 import datetime
+import time
 
 import streamlit as st
 from code_editor import code_editor
@@ -8,6 +9,7 @@ from sqlparse import format as format_sql
 from sqlparse import parse
 from sqlparse.sql import Identifier
 
+from own_your_data.components.chart_configuration import get_cached_plot
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
 from own_your_data.utils import insert_database_size
@@ -27,9 +29,14 @@ def execute_sql(sql_editor):
                     st.error(f"You are not allowed to modify {table_name[0]} table!")
                     continue
             try:
+                start_time = time.perf_counter()
                 df = duckdb_conn.execute(str(statement)).df()
+                end_time = time.perf_counter()
+                st.info(f"Execution time: {(end_time - start_time) * 1000: .4f} ms")
                 insert_database_size()
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
+                if statement.get_type() in ["INSERT", "CREATE"]:
+                    get_cached_plot.clear()
             except (InternalException, FatalException):
                 st.error("There is a fatal error in duckdb, the below SQL cannot be executed!")
                 st.code(statement)
