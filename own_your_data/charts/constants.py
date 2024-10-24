@@ -23,3 +23,7 @@ class SupportedAggregationMethods(str, ExtendedEnum):
     min = "min"
     max = "max"
     none = "none"
+
+
+PRIMARY_COLOR = "rgb(237, 173, 8)"
+SECONDARY_COLOR = "rgb(255, 242, 174)"

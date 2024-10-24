@@ -1,3 +1,5 @@
+import datetime
+import inspect
 import time
 from functools import wraps
 from pathlib import Path
@@ -12,13 +14,14 @@ logger = get_logger(__name__)
 def timeit(func):
     @wraps(func)
     def timeit_wrapper(*args, **kwargs):
-        if not st.get_option("logger.level") == "debug":
-            return func(*args, **kwargs)
+        if "logging" not in st.session_state:
+            st.session_state.logging = ""
         start_time = time.perf_counter()
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        logger.debug(f"{func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms")
+        st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
+            {func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms\n{st.session_state.logging}"
         return result
 
     return timeit_wrapper
@@ -130,3 +133,37 @@ def initial_load():
     """
     )
     return duckdb_conn
+
+
+@st.cache_resource
+def get_plotly_colors(plot_color):
+
+    if not plot_color:
+        return None
+    plotly_color_schemes = inspect.getmembers(plot_color)
+
+    # TODO: create a streamlit component
+    # colors_to_html = ' ;">&#9632;</div>'.join(
+    #     f'<div style="display:inline;color:{color};height:auto;margin-left:2px;width:25px;'
+    #     for color in plotly_color_scheme[1]
+    # )
+    # color_schemes[plotly_color_scheme[0]] = (
+    #     f'<div>\
+    #     <input type="radio" name="color-radio" id="{plotly_color_scheme[0]}" style="display:inline">\
+    #     <label for="{plotly_color_scheme[0]}" style="display:inline">\
+    #     <div style="display:inline;max-width:100%;">{colors_to_html};">&#9632;</div>\
+    #     </label>\
+    #     </div>\
+    # '
+    # )
+
+    return [
+        plotly_color_scheme[0]
+        for plotly_color_scheme in plotly_color_schemes
+        if not (plotly_color_scheme[0].startswith("_") or not isinstance(plotly_color_scheme[1], list))
+    ]
+
+
+@st.cache_data
+def cache_duckdb_execution(_duckdb_conn, sql_query):
+    return _duckdb_conn.execute(sql_query).df()

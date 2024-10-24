@@ -1,9 +1,12 @@
+import datetime
 import uuid
 
 import streamlit as st
 
+from own_your_data.components.chart_configuration import get_cached_plot
 from own_your_data.components.chart_configuration import get_chart_configuration
-from own_your_data.components.charts import get_charts_components
+from own_your_data.components.chart_configuration import get_chart_layout
+from own_your_data.components.chart_configuration import get_charts_components
 from own_your_data.components.data_analysis import get_data_analysis_components
 from own_your_data.components.import_file import cleanup_db
 from own_your_data.components.import_file import get_table_name
@@ -14,6 +17,7 @@ from own_your_data.components.import_file import process_imported_data
 from own_your_data.components.sql_editor import display_duckdb_catalog
 from own_your_data.components.sql_editor import get_code_editor
 from own_your_data.components.system_info import get_system_info
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
 from own_your_data.utils import initial_load
@@ -36,6 +40,7 @@ get_duckdb_conn()
 
 if "session_id" not in st.session_state:
     st.session_state.session_id = uuid.uuid4()
+    st.session_state.logging = ""
     initial_load()
     import_demo_file()
 
@@ -65,7 +70,7 @@ with import_data_col.popover("Import Data", use_container_width=True, icon="â¬†ï
         st.warning("Uploading a file with the same name will result into overwriting the data.")
         data_source = st.file_uploader(
             "Choose a file",
-            type=["csv", "txt", "zip"],
+            type=["csv", "txt", "zip", "tsv"],
             help="""
             Upload a file in csv or txt format in which you have data you would like to explore. \n
             You can also upload a zip of csv/txt files, they should contain similar data as they will be
@@ -74,6 +79,7 @@ with import_data_col.popover("Import Data", use_container_width=True, icon="â¬†ï
              [github](https://github.com/acirtep/own-your-data/blob/main/own_your_data/demo/demo_file.txt)
         """,
         )
+        add_auto_columns = st.checkbox("Automatically parse date fields into year, month name and day name", value=True)
         submitted = st.form_submit_button("Upload file")
 
     if submitted and data_source:
@@ -93,12 +99,14 @@ with import_data_col.popover("Import Data", use_container_width=True, icon="â¬†ï
                     table_name=table_name,
                     file_name=data_source.name,
                 )
-            process_imported_data(table_name=table_name)
+            process_imported_data(table_name=table_name, add_auto_columns=add_auto_columns)
             st.success(f"File {data_source.name} successfully imported into {final_table_name} table")
             st.session_state.table_options = get_tables()
             st.session_state.index_option = st.session_state.table_options.index(final_table_name)
+            get_cached_plot.clear()
+            cache_duckdb_execution.clear()
         except Exception as error:  # NOQA everything can go wrong
-            st.error(f"Something went wrong {error}")
+            st.error(f"Something went wrong: {error}")
 
 # with export_data_col.popover("Export from database"):
 #     st.info("In order to export specific tables, go to `SQL Editor`, do a `select * from` and download the result.\
@@ -126,9 +134,10 @@ with sql_editor_tab:
                 display_duckdb_catalog()
 
 with chart_tab:
-    with st.container():
-        chart_config_col, chart_col = st.columns([1, 3])
-        with chart_config_col:
+    chart_config_col, chart_col = st.columns([1, 3])
+
+    with chart_config_col:
+        with st.container(border=True):
             selected_table = st.selectbox(
                 "Select a table",
                 options=st.session_state.table_options,
@@ -139,15 +148,18 @@ with chart_tab:
             if selected_table:
                 chart_configuration = get_chart_configuration(table_name=selected_table)
 
-        with chart_col:
-            get_data_analysis_components(table_name=selected_table)
-            if chart_configuration:
-                try:
-                    get_charts_components(chart_configuration=chart_configuration)
-                except Exception as error:  # NOQA everything can go wrong
-                    st.error(f"Something went wrong {error}")
-            else:
-                st.warning("Visualize the data as a chart by configuring it on the left side")
+                with chart_col:
+                    get_data_analysis_components(table_name=selected_table)
+                    if chart_configuration:
+                        chart_configuration = get_chart_layout(chart_configuration)
+                        try:
+                            st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
+                            Generating {chart_configuration.plot_type} chart for {chart_configuration.table_name}"
+                            get_charts_components(chart_configuration=chart_configuration)
+                        except Exception as error:  # NOQA everything can go wrong
+                            st.error(f"Something went wrong: {error}")
+                    else:
+                        st.warning("Visualize the data as a chart by configuring it on the left side")
 
 with system_info_tab:
     get_system_info()

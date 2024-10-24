@@ -5,8 +5,8 @@ from importlib import metadata
 
 import streamlit as st
 
-from own_your_data.charts.charts import LineChart
 from own_your_data.charts.constants import SupportedAggregationMethods
+from own_your_data.charts.definition import LineChart
 from own_your_data.utils import get_duckdb_conn
 
 
@@ -79,3 +79,6 @@ def get_system_info():
         installed_packages = get_installed_pkg()
         installed_packages.sort(key=operator.itemgetter("Name"))
         st.dataframe(installed_packages, column_config={"URL": st.column_config.LinkColumn()}, use_container_width=True)
+
+    with st.expander("Logging information"):
+        st.code(st.session_state.logging)

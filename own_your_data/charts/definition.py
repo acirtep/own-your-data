@@ -1,14 +1,18 @@
 from dataclasses import dataclass
 from itertools import chain
+from typing import Optional
 
 import plotly.express as px
 import plotly.graph_objects as go
 from duckdb import DuckDBPyConnection
 from plotly.graph_objs import Figure
 
+from own_your_data.charts.constants import PRIMARY_COLOR
+from own_your_data.charts.constants import SECONDARY_COLOR
 from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.constants import SupportedPlots
 from own_your_data.charts.helpers import get_order_clause
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import timeit
 
 
@@ -23,6 +27,7 @@ class BaseChart:
         orientation: str | None,
         table_name: str,
         aggregation_method: str = SupportedAggregationMethods.count.value,
+        color_scheme: list[str] | None = None,
     ):
         self.duckdb_conn = duckdb_conn
         self.metric_column = metric_column
@@ -31,6 +36,7 @@ class BaseChart:
         self.orientation = orientation
         self.aggregation_method = aggregation_method
         self.table_name = table_name
+        self.color_scheme = color_scheme
 
         cast_expression = (
             f'"{metric_column}"'
@@ -44,6 +50,7 @@ class BaseChart:
         )
         self.where_expression = f"where {cast_expression} is not null"
         self.group_by = "" if self.aggregation_method == SupportedAggregationMethods.none else "group by all"
+        self.validate_color_scheme()
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
         self.category_orders = self.get_category_orders()
@@ -78,58 +85,49 @@ class BaseChart:
 
     @timeit
     def get_data(self):
-        return self.duckdb_conn.execute(self.sql_query).df()
-
-    def _get_order(self, ordered_list):
-        category_order = {}
-        for column in chain(self.dim_columns, [self.color_column], [self.metric_column]):
-            if not column:
-                continue
-            if self.duckdb_conn.execute(
-                f"""
-                        select *
-                        from {self.table_name}
-                        where "{column}"::varchar in {ordered_list}
-                        limit 1
-                    """
-            ).fetchall():
-                category_order[column] = ordered_list
-        return category_order
-
-    def get_week_day_order(self):
-        return self._get_order(
-            ordered_list=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        )
-
-    def get_month_order(self):
-        return self._get_order(
-            ordered_list=[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-            ]
-        )
+        return cache_duckdb_execution(_duckdb_conn=self.duckdb_conn, sql_query=self.sql_query)
 
     @timeit
     def get_category_orders(self):
-        return {**self.get_week_day_order(), **self.get_month_order()}
+        category_order = {}
+        for column in chain(self.dim_columns, [self.color_column]):
+            if not column:
+                continue
+            unique_values_df = cache_duckdb_execution(
+                _duckdb_conn=self.duckdb_conn,
+                sql_query=f"""
+                        select distinct "{column}"
+                        from {self.table_name}
+                        order by {get_order_clause(column)}
+                    """,
+            )
+            if not unique_values_df.empty:
+                category_order[column] = unique_values_df[column].tolist()
+        return category_order
 
     @timeit
     def get_plot(self) -> Figure:
         pass
 
     @timeit
-    def format_plot(self):
-        pass
+    def validate_color_scheme(self):
+        if not self.color_column:
+            return
+
+        if not self.color_scheme:
+            return
+        more_values_than_color = self.duckdb_conn.execute(
+            f"""
+            select count(distinct "{self.color_column}")
+            from {self.table_name}
+            having count(distinct "{self.color_column}") > {len(self.color_scheme)}
+        """
+        ).fetchone()
+        if more_values_than_color:
+            raise ValueError(
+                f"The number of colors in the color sequence \
+                must exceed the number of unique values in the color column ({more_values_than_color[0]})!"
+            )
 
 
 class BarChart(BaseChart):
@@ -144,6 +142,7 @@ class BarChart(BaseChart):
                 orientation=self.orientation,
                 color=self.color_column,
                 category_orders=self.category_orders,
+                color_discrete_sequence=self.color_scheme,
             )
         return px.bar(
             data_frame=self.data,
@@ -152,6 +151,7 @@ class BarChart(BaseChart):
             orientation=self.orientation,
             color=self.color_column,
             category_orders=self.category_orders,
+            color_discrete_sequence=self.color_scheme,
         )
 
 
@@ -159,16 +159,44 @@ class LineChart(BaseChart):
 
     @timeit
     def get_plot(self) -> Figure:
-        return px.line(
+        fig = px.line(
             data_frame=self.data,
             x=self.dim_columns[0],
             y=self.metric_column,
             color=self.color_column,
             category_orders=self.category_orders,
+            color_discrete_sequence=self.color_scheme,
             # Issue in Plotly: https://stackoverflow.com/questions/73321843/plotly-weekly-monthly-range-selector-buttons-not-working-on-time-series-data  # NOQA
             # markers=True,
             # symbol=self.color_column,
         )
+
+        fig.update_xaxes(
+            rangeslider_visible=False,
+            rangemode="tozero",
+            rangeselector=dict(
+                buttons=list(
+                    [
+                        dict(count=1, label="1d", step="day", stepmode="backward"),
+                        dict(count=7, label="1w", step="day", stepmode="backward"),
+                        dict(count=14, label="2w", step="day", stepmode="backward"),
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=3, label="3m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate"),
+                        dict(count=1, label="1y", step="year", stepmode="backward"),
+                        dict(step="all"),
+                    ]
+                )
+            ),
+        )
+        fig.update_layout(
+            template="plotly_dark",
+            xaxis_rangeselector_font_color="black",
+            xaxis_rangeselector_activecolor=SECONDARY_COLOR,
+            xaxis_rangeselector_bgcolor=PRIMARY_COLOR,
+        )
+        return fig
 
 
 class SankeyChart(BaseChart):
@@ -181,6 +209,7 @@ class SankeyChart(BaseChart):
         orientation: str | None,
         table_name: str,
         aggregation_method: str = SupportedAggregationMethods.count.value,
+        color_scheme: Optional[px.colors.sequential] = px.colors.sequential.Mint,
     ):
         super().__init__(
             duckdb_conn=duckdb_conn,
@@ -194,6 +223,7 @@ class SankeyChart(BaseChart):
                 else aggregation_method
             ),
             table_name=table_name,
+            color_scheme=color_scheme,
         )
 
     @timeit
@@ -208,12 +238,17 @@ class SankeyChart(BaseChart):
             union_cubes = f"""
             {union_cubes}
             select "{self.metric_column}" as values,
-                "{self.dim_columns[idx]}" as source,
-                "{self.dim_columns[idx + 1]}" as target,
+                concat('{self.dim_columns[idx]}',
+                    concat('-dummy-placeholder-',"{self.dim_columns[idx]}")
+                ) as source,
+                concat('{self.dim_columns[idx + 1]}',
+                    concat('-dummy-placeholder-',"{self.dim_columns[idx + 1]}")
+                ) as target,
                 grouping_set
             from cube_cte
             where "{self.dim_columns[idx]}" is not null
                 and "{self.dim_columns[idx + 1]}" is not null
+                and "{self.metric_column}" > 0
             \n
             {'union all' if idx < len(self.dim_columns) - 2 else ""}
             """
@@ -235,7 +270,10 @@ class SankeyChart(BaseChart):
                 ),
                 label_grouping as (
                     -- retrieve per label the first occuring grouping set as source
-                    select label, min(grouping_set) as grouping_set, sum(values) as label_value
+                    select label,
+                        min(grouping_set) as grouping_set,
+                        sum(values) as label_value,
+                        split_part(label, '-dummy-placeholder-', 2) as label_without_placeholder
                     from (select source as label, grouping_set, values from union_cte
                         union all
                         select target as label, 1000000, values from union_cte
@@ -267,20 +305,29 @@ class SankeyChart(BaseChart):
                     select label,
                         lead(grouping_set) over (grouping_set_label) as next_grouping_set,
                         lag(grouping_set) over (grouping_set_label) as previous_grouping_set,
+                        count(label_value) over (partition by grouping_set) as number_labels_in_group,
+                        count(label_value) over (
+                            partition by grouping_set order by {get_order_clause('label_without_placeholder')}
+                        ) as number_labels_to_label,
+                        max(label_value) over (partition by grouping_set) max_value,
+                        min(label_value) over (partition by grouping_set) min_value,
                         sum(label_value) over (partition by grouping_set) as grouping_set_total_value,
                         sum(label_value) over (
-                            partition by grouping_set order by {get_order_clause('label')}
+                            partition by grouping_set order by {get_order_clause('label_without_placeholder')}
                         ) as grouping_set_running_value,
                         round(
-                            case when
+                            case
+                            when number_labels_in_group = 1 then 0.499
+                            when
                                 grouping_set = coalesce(next_grouping_set, grouping_set)
                                 and coalesce(previous_grouping_set, -1) != grouping_set
-                            then 0.001
-                        else grouping_set_running_value/grouping_set_total_value
+                            then 1/number_labels_in_group
+                        else 1/number_labels_in_group +
+                            grouping_set_running_value/grouping_set_total_value * (0.999-1/number_labels_in_group)
                         end, 3) label_y_position
                     from label_grouping
                     window grouping_set_label as (
-                        order by grouping_set, {get_order_clause('label')}
+                        order by grouping_set, {get_order_clause('label_without_placeholder')}
                     )
                 ),
                 idx_cte as (
@@ -302,11 +349,11 @@ class SankeyChart(BaseChart):
                     on x_position.label = y_position.label
                 )
                 select
-                    label,
+                    list_transform(label, x -> split_part(x, '-dummy-placeholder-', 2)) as label,
                     label_x_position,
                     label_y_position,
-                    array_agg(list_position(label, source::varchar) - 1) as source,
-                    array_agg(list_position(label, target::varchar) - 1) as target,
+                    array_agg(list_position(idx_cte.label, source::varchar) - 1) as source,
+                    array_agg(list_position(idx_cte.label, target::varchar) - 1) as target,
                     array_agg(values) as values
                 from union_cte, idx_cte
                 group by all
@@ -315,18 +362,23 @@ class SankeyChart(BaseChart):
     @timeit
     def get_plot(self) -> Figure:
         unpacked_data = self.data.to_dict(orient="records")[0]
+        node_color = SECONDARY_COLOR
+        link_color = PRIMARY_COLOR
+        if len(self.color_scheme) == 2:
+            node_color = self.color_scheme[0]
+            link_color = self.color_scheme[1]
         fig = Figure(
             data=[
                 go.Sankey(
                     orientation=self.orientation,
                     valueformat=".0f",
-                    textfont=dict(color="black", size=12),
+                    textfont=dict(color="white", size=12),
                     node=dict(
                         pad=10,
                         thickness=20,
-                        line=dict(color="black", width=0.5),
+                        line=dict(color="green", width=0.5),
                         label=unpacked_data["label"],
-                        color="rgb(228, 241, 225)",
+                        color=node_color,
                         x=unpacked_data["label_x_position"],
                         y=unpacked_data["label_y_position"],
                     ),
@@ -334,29 +386,73 @@ class SankeyChart(BaseChart):
                         source=unpacked_data["source"],
                         target=unpacked_data["target"],
                         value=unpacked_data["values"],
-                        color=["rgb(99, 166, 160)" for i in range(0, len(unpacked_data["source"]))],
+                        color=[link_color for i in range(0, len(unpacked_data["source"]))],
                     ),
                 )
             ]
         )
         fig.update_traces(arrangement="snap", selector=dict(type="sankey"))
+        # TODO: implement labels
+        # number_columns = len(self.dim_columns)
+        # for idx, dim_column in enumerate(self.dim_columns):
+        #     fig.add_annotation(
+        #         dict(
+        #             font=dict(color=SECONDARY_COLOR, size=12),
+        #             x=idx / number_columns,
+        #             y=1.05,
+        #             showarrow=False,
+        #             text=f"<b>{dim_column.upper()}</b>",
+        #         )
+        #     )
         return fig
 
 
 class HeatMapChart(BaseChart):
 
     @timeit
+    def get_sql_query(self) -> str:
+        return f"""
+            with existing_data as (
+            select
+                {self.agg_expression} as "{self.metric_column}",
+                "{self.dim_columns[0]}",
+                "{self.dim_columns[1]}"
+            from {self.table_name}
+            {self.where_expression}
+            {self.group_by}),
+            unique_dim_col_0 as (select distinct "{self.dim_columns[0]}" from {self.table_name}
+            {self.where_expression}),
+            unique_dim_col1 as (select distinct "{self.dim_columns[1]}" from {self.table_name}
+            {self.where_expression})
+            select * from (
+                select *
+                from existing_data
+                union all
+                select distinct 0,
+                    col0."{self.dim_columns[0]}",
+                    col1."{self.dim_columns[1]}"
+                from unique_dim_col_0 col0, unique_dim_col1 col1
+                where not exists( select 1
+                    from existing_data src
+                    where src."{self.dim_columns[0]}" = col0."{self.dim_columns[0]}"
+                    and src."{self.dim_columns[1]}" = col1."{self.dim_columns[1]}"
+                    )
+            ) with_fill_null
+            order by {get_order_clause(self.dim_columns[1])}, {get_order_clause(self.dim_columns[0])}
+        """
+
+    @timeit
     def get_plot(self) -> Figure:
         pivoted_data = self.data.pivot_table(
-            index=self.color_column, columns=self.dim_columns[0], values=self.metric_column, sort=False
-        ).fillna(0)
+            index=self.dim_columns[1], columns=self.dim_columns[0], values=self.metric_column, sort=False
+        )
 
         fig = px.imshow(
             pivoted_data.to_numpy(),
             labels=dict(x=self.dim_columns[0], y=self.color_column, color=self.metric_column),
             x=list(pivoted_data.columns),
             y=list(pivoted_data.index),
-            color_continuous_scale="mint",
+            color_continuous_scale=self.color_scheme,
             text_auto=".2f",
             aspect="auto",
         )
@@ -366,6 +462,26 @@ class HeatMapChart(BaseChart):
 
 
 class ScatterChart(BaseChart):
+
+    @timeit
+    def validate_color_scheme(self):
+        if not self.color_column:
+            return
+        if not self.color_scheme:
+            return
+        more_values_than_color = self.duckdb_conn.execute(
+            f"""
+            select count(distinct "{self.color_column}")
+            from {self.table_name}
+            where try_cast("{self.color_column}" as numeric) is null
+            having count(distinct "{self.color_column}") > {len(self.color_scheme)}
+        """
+        ).fetchone()
+        if more_values_than_color:
+            raise ValueError(
+                f"The number of colors in the color sequence \
+                must exceed the number of unique values in the color column ({more_values_than_color[0]})!"
+            )
 
     @timeit
     def get_sql_query(self) -> str:
@@ -399,6 +515,7 @@ class ScatterChart(BaseChart):
             color=self.color_column,
             size=self.metric_column,
             category_orders=self.category_orders,
+            color_discrete_sequence=self.color_scheme,
         )
 
 
@@ -410,18 +527,27 @@ PLOT_TYPE_TO_CHART_CLASS = {
     SupportedPlots.scatter: ScatterChart,
 }
 
+PLOT_TYPE_TO_COLOR_CLASS = {
+    SupportedPlots.bar: px.colors.qualitative,
+    SupportedPlots.line: px.colors.qualitative,
+    SupportedPlots.heatmap: px.colors.sequential,
+    SupportedPlots.scatter: px.colors.sequential,
+    SupportedPlots.sankey: None,
+}
+
 
 @dataclass
 class ChartConfiguration:
+    table_name: str
     plot_type: SupportedPlots
     aggregation_method: SupportedAggregationMethods
     metric_column: str
     dim_columns: list[str]
     color_column: str | None
     orientation: str | None
-    title: str
-    x_label: str
-    y_label: str
-    height: int
-    width: int
-    table_name: str
+    title: str | None
+    x_label: str | None
+    y_label: str | None
+    height: int | None
+    width: int | None
+    color_scheme: list[str] | None
