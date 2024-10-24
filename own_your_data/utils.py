@@ -142,22 +142,26 @@ def get_plotly_colors(plot_color):
         return None
     plotly_color_schemes = inspect.getmembers(plot_color)
 
-    color_schemes = {}
-    for plotly_color_scheme in plotly_color_schemes:
-        if (
-            plotly_color_scheme[0].startswith("_")
-            or not isinstance(plotly_color_scheme[1], list)
-            or plotly_color_scheme[0].endswith("_r")
-        ):
-            continue
-        colors_to_html = ' ;">&#9632;</div>'.join(
-            f'<div style="display:inline;color:{color};height:auto;margin-left:2px;width:25px;'
-            for color in plotly_color_scheme[1]
-        )
-        color_schemes[plotly_color_scheme[0]] = (
-            f'<div style="display:inline;max-width:100%;">{colors_to_html};">&#9632;</div>'
-        )
-    return color_schemes
+    # TODO: create a streamlit component
+    # colors_to_html = ' ;">&#9632;</div>'.join(
+    #     f'<div style="display:inline;color:{color};height:auto;margin-left:2px;width:25px;'
+    #     for color in plotly_color_scheme[1]
+    # )
+    # color_schemes[plotly_color_scheme[0]] = (
+    #     f'<div>\
+    #     <input type="radio" name="color-radio" id="{plotly_color_scheme[0]}" style="display:inline">\
+    #     <label for="{plotly_color_scheme[0]}" style="display:inline">\
+    #     <div style="display:inline;max-width:100%;">{colors_to_html};">&#9632;</div>\
+    #     </label>\
+    #     </div>\
+    # '
+    # )
+
+    return [
+        plotly_color_scheme[0]
+        for plotly_color_scheme in plotly_color_schemes
+        if not (plotly_color_scheme[0].startswith("_") or not isinstance(plotly_color_scheme[1], list))
+    ]
 
 
 @st.cache_data

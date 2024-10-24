@@ -36,7 +36,7 @@ def execute_sql(sql_editor):
                 st.info(f"Execution time: {(end_time - start_time) * 1000: .4f} ms")
                 insert_database_size()
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
-                if statement.get_type() in ["INSERT", "CREATE"]:
+                if statement.get_type() in ["INSERT", "CREATE", "DELETE", "DROP"]:
                     get_cached_plot.clear()
                     cache_duckdb_execution.clear()
             except (InternalException, FatalException):

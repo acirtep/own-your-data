@@ -90,16 +90,17 @@ def get_auto_column_expressions(table_name) -> list[str]:
 
 @timeit
 @gather_database_size
-def process_imported_data(table_name):
+def process_imported_data(table_name: str, add_auto_columns: bool = True):
     duckdb_conn = get_duckdb_conn()
-    auto_column_expressions = get_auto_column_expressions(table_name=table_name)
+    auto_column_expressions = get_auto_column_expressions(table_name=table_name) if add_auto_columns else None
     column_selection = [
         f'"{column[0]}" as "{" ".join(re.sub("[^A-Za-z0-9 ]+", " ", column[0]).title().split())}"'
         for column in duckdb_conn.execute(
             f"select column_name from duckdb_columns where table_name='{table_name}'"
         ).fetchall()
     ]
-    column_selection.extend(auto_column_expressions)
+    if auto_column_expressions:
+        column_selection.extend(auto_column_expressions)
 
     duckdb_conn.execute(
         f"""

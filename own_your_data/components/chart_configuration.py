@@ -148,13 +148,23 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
     if not chart_configuration:
         return None
     with st.expander("Configure layout"):
-        color_col, title_col, x_col, y_col, height_col = st.columns([1, 1, 1, 1, 1], vertical_alignment="center")
+        color_legend_col, color_col, title_col, x_col, y_col, height_col = st.columns(
+            [0.5, 1, 1, 1, 1, 1], vertical_alignment="bottom"
+        )
         chart_configuration.title = title_col.text_input("Title", value="Title")
-        color_schemes = get_plotly_colors(PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type))
-        if color_schemes:
+        plot_color_scheme = PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type)
+        if plot_color_scheme:
+            with color_legend_col.popover("🎨"):
+                st.info(
+                    "Here is a preview of color pallets available.\
+                    Choose one from the list :green[Choose a color sequence]"
+                )
+                st.plotly_chart(plot_color_scheme.swatches())
+
+            plotly_colors = get_plotly_colors(plot_color_scheme)
             selected_color_scheme = color_col.selectbox(
                 "Choose a color sequence",
-                color_schemes.keys(),
+                plotly_colors,
                 index=None,
                 help="""
                     Select a color for the charts.
@@ -163,10 +173,12 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
                 """,
             )
             if selected_color_scheme:
-                # color_col.html(color_schemes.get(selected_color_scheme))
-                chart_configuration.color_scheme = getattr(
-                    PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type), selected_color_scheme
-                )
+                chart_configuration.color_scheme = getattr(plot_color_scheme, selected_color_scheme)
+
+        if chart_configuration.plot_type == SupportedPlots.sankey:
+            node_color = color_legend_col.color_picker("🎨 Node", value="#D4E016")
+            link_color = color_col.color_picker("🎨 Link", value="#30A852")
+            chart_configuration.color_scheme = [node_color, link_color]
 
         if chart_configuration.plot_type not in [SupportedPlots.sankey]:
             chart_configuration.x_label = x_col.text_input("X-axis label", value=chart_configuration.x_label)

@@ -87,48 +87,23 @@ class BaseChart:
     def get_data(self):
         return cache_duckdb_execution(_duckdb_conn=self.duckdb_conn, sql_query=self.sql_query)
 
-    def _get_order(self, ordered_list):
-        category_order = {}
-        for column in chain(self.dim_columns, [self.color_column], [self.metric_column]):
-            if not column:
-                continue
-            if self.duckdb_conn.execute(
-                f"""
-                        select *
-                        from {self.table_name}
-                        where "{column}"::varchar in {ordered_list}
-                        limit 1
-                    """
-            ).fetchall():
-                category_order[column] = ordered_list
-        return category_order
-
-    def get_week_day_order(self):
-        return self._get_order(
-            ordered_list=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        )
-
-    def get_month_order(self):
-        return self._get_order(
-            ordered_list=[
-                "January",
-                "February",
-                "March",
-                "April",
-                "May",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-            ]
-        )
-
     @timeit
     def get_category_orders(self):
-        return {**self.get_week_day_order(), **self.get_month_order()}
+        category_order = {}
+        for column in chain(self.dim_columns, [self.color_column]):
+            if not column:
+                continue
+            unique_values_df = cache_duckdb_execution(
+                _duckdb_conn=self.duckdb_conn,
+                sql_query=f"""
+                        select distinct "{column}"
+                        from {self.table_name}
+                        order by {get_order_clause(column)}
+                    """,
+            )
+            if not unique_values_df.empty:
+                category_order[column] = unique_values_df[column].tolist()
+        return category_order
 
     @timeit
     def get_plot(self) -> Figure:
@@ -387,6 +362,11 @@ class SankeyChart(BaseChart):
     @timeit
     def get_plot(self) -> Figure:
         unpacked_data = self.data.to_dict(orient="records")[0]
+        node_color = SECONDARY_COLOR
+        link_color = PRIMARY_COLOR
+        if len(self.color_scheme) == 2:
+            node_color = self.color_scheme[0]
+            link_color = self.color_scheme[1]
         fig = Figure(
             data=[
                 go.Sankey(
@@ -398,7 +378,7 @@ class SankeyChart(BaseChart):
                         thickness=20,
                         line=dict(color="green", width=0.5),
                         label=unpacked_data["label"],
-                        color=SECONDARY_COLOR,
+                        color=node_color,
                         x=unpacked_data["label_x_position"],
                         y=unpacked_data["label_y_position"],
                     ),
@@ -406,23 +386,24 @@ class SankeyChart(BaseChart):
                         source=unpacked_data["source"],
                         target=unpacked_data["target"],
                         value=unpacked_data["values"],
-                        color=[PRIMARY_COLOR for i in range(0, len(unpacked_data["source"]))],
+                        color=[link_color for i in range(0, len(unpacked_data["source"]))],
                     ),
                 )
             ]
         )
         fig.update_traces(arrangement="snap", selector=dict(type="sankey"))
-        number_columns = len(self.dim_columns)
-        for idx, dim_column in enumerate(self.dim_columns):
-            fig.add_annotation(
-                dict(
-                    font=dict(color=SECONDARY_COLOR, size=12),
-                    x=idx / number_columns,
-                    y=1.05,
-                    showarrow=False,
-                    text=f"<b>{dim_column.upper()}</b>",
-                )
-            )
+        # TODO: implement labels
+        # number_columns = len(self.dim_columns)
+        # for idx, dim_column in enumerate(self.dim_columns):
+        #     fig.add_annotation(
+        #         dict(
+        #             font=dict(color=SECONDARY_COLOR, size=12),
+        #             x=idx / number_columns,
+        #             y=1.05,
+        #             showarrow=False,
+        #             text=f"<b>{dim_column.upper()}</b>",
+        #         )
+        #     )
         return fig
 
 
@@ -431,15 +412,32 @@ class HeatMapChart(BaseChart):
     @timeit
     def get_sql_query(self) -> str:
         return f"""
+            with existing_data as (
             select
                 {self.agg_expression} as "{self.metric_column}",
                 "{self.dim_columns[0]}",
-                "{self.dim_columns[1]}",
-                {get_order_clause(self.dim_columns[0])},
-                {get_order_clause(self.dim_columns[1])}
+                "{self.dim_columns[1]}"
             from {self.table_name}
             {self.where_expression}
-            {self.group_by}
+            {self.group_by}),
+            unique_dim_col_0 as (select distinct "{self.dim_columns[0]}" from {self.table_name}
+            {self.where_expression}),
+            unique_dim_col1 as (select distinct "{self.dim_columns[1]}" from {self.table_name}
+            {self.where_expression})
+            select * from (
+                select *
+                from existing_data
+                union all
+                select distinct 0,
+                    col0."{self.dim_columns[0]}",
+                    col1."{self.dim_columns[1]}"
+                from unique_dim_col_0 col0, unique_dim_col1 col1
+                where not exists( select 1
+                    from existing_data src
+                    where src."{self.dim_columns[0]}" = col0."{self.dim_columns[0]}"
+                    and src."{self.dim_columns[1]}" = col1."{self.dim_columns[1]}"
+                    )
+            ) with_fill_null
             order by {get_order_clause(self.dim_columns[1])}, {get_order_clause(self.dim_columns[0])}
         """
 
@@ -447,7 +445,7 @@ class HeatMapChart(BaseChart):
     def get_plot(self) -> Figure:
         pivoted_data = self.data.pivot_table(
             index=self.dim_columns[1], columns=self.dim_columns[0], values=self.metric_column, sort=False
-        ).fillna(0)
+        )
 
         fig = px.imshow(
             pivoted_data.to_numpy(),
