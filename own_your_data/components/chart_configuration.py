@@ -156,7 +156,7 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
         if plot_color_scheme:
             with color_legend_col.popover("🎨"):
                 st.info(
-                    "Here is a preview of color pallets available.\
+                    "Here is a preview of color palettes available.\
                     Choose one from the list :green[Choose a color sequence]"
                 )
                 st.plotly_chart(plot_color_scheme.swatches())
@@ -169,7 +169,10 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
                 help="""
                     Select a color for the charts.
                     More information on
-                    [Plotly](https://plotly.com/python/discrete-color/#discrete-vs-continuous-color)
+                    [Plotly](https://plotly.com/python/discrete-color/#discrete-vs-continuous-color). \n
+                    In order to avoid the same color to be used by different values, the chart will automatically
+                    use the default colors. For example, `Plotly` palette has 10 colors and will not be used to
+                    color the chart which has more than 10 values on the color column.
                 """,
             )
             if selected_color_scheme:
@@ -202,7 +205,7 @@ def get_cached_plot(
     orientation: str | None,
     aggregation_method: SupportedAggregationMethods,
     table_name: str,
-    color_scheme: str,
+    color_scheme: list[str] | None,
 ):
     duckdb_conn = get_duckdb_conn()
     chart_class = PLOT_TYPE_TO_CHART_CLASS.get(plot_type)
