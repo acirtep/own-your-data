@@ -97,7 +97,9 @@ class BaseChart:
                 _duckdb_conn=self.duckdb_conn,
                 sql_query=f"""
                         select distinct "{column}"
-                        from {self.table_name}
+                        from {self.table_name} src
+                        where try_cast("{column}" as numeric) is null
+                        and try_cast("{column}" as date) is null
                         order by {get_order_clause(column)}
                     """,
             )
@@ -113,21 +115,18 @@ class BaseChart:
     def validate_color_scheme(self):
         if not self.color_column:
             return
-
         if not self.color_scheme:
             return
-        more_values_than_color = self.duckdb_conn.execute(
-            f"""
-            select count(distinct "{self.color_column}")
+        more_values_than_color = cache_duckdb_execution(
+            _duckdb_conn=self.duckdb_conn,
+            sql_query=f"""
+            select count(distinct "{self.color_column}") as count_records
             from {self.table_name}
             having count(distinct "{self.color_column}") > {len(self.color_scheme)}
-        """
-        ).fetchone()
-        if more_values_than_color:
-            raise ValueError(
-                f"The number of colors in the color sequence \
-                must exceed the number of unique values in the color column ({more_values_than_color[0]})!"
-            )
+        """,
+        )
+        if not more_values_than_color.empty:
+            self.color_scheme = None
 
 
 class BarChart(BaseChart):
@@ -315,15 +314,23 @@ class SankeyChart(BaseChart):
                         sum(label_value) over (
                             partition by grouping_set order by {get_order_clause('label_without_placeholder')}
                         ) as grouping_set_running_value,
+                        case when number_labels_in_group <= 4
+                            then 0.3
+                        else 1/number_labels_in_group
+                        end as starting_position,
+                        case when number_labels_in_group <= 4
+                            then 0.7
+                        else 0.999
+                        end as ending_position,
                         round(
                             case
                             when number_labels_in_group = 1 then 0.499
                             when
                                 grouping_set = coalesce(next_grouping_set, grouping_set)
                                 and coalesce(previous_grouping_set, -1) != grouping_set
-                            then 1/number_labels_in_group
-                        else 1/number_labels_in_group +
-                            grouping_set_running_value/grouping_set_total_value * (0.999-1/number_labels_in_group)
+                            then starting_position
+                        else starting_position +
+                            grouping_set_running_value/grouping_set_total_value/3 * (ending_position-starting_position)
                         end, 3) label_y_position
                     from label_grouping
                     window grouping_set_label as (
@@ -467,21 +474,18 @@ class ScatterChart(BaseChart):
     def validate_color_scheme(self):
         if not self.color_column:
             return
-        if not self.color_scheme:
-            return
-        more_values_than_color = self.duckdb_conn.execute(
-            f"""
-            select count(distinct "{self.color_column}")
-            from {self.table_name}
-            where try_cast("{self.color_column}" as numeric) is null
-            having count(distinct "{self.color_column}") > {len(self.color_scheme)}
-        """
-        ).fetchone()
-        if more_values_than_color:
-            raise ValueError(
-                f"The number of colors in the color sequence \
-                must exceed the number of unique values in the color column ({more_values_than_color[0]})!"
-            )
+
+        check_color_column_numeric = cache_duckdb_execution(
+            _duckdb_conn=self.duckdb_conn,
+            sql_query=f"""
+                select *
+                from {self.table_name}
+                where try_cast("{self.color_column}" as numeric) is null
+                limit 1
+            """,
+        )
+        if not check_color_column_numeric.empty:
+            super().validate_color_scheme()
 
     @timeit
     def get_sql_query(self) -> str:
@@ -516,6 +520,7 @@ class ScatterChart(BaseChart):
             size=self.metric_column,
             category_orders=self.category_orders,
             color_discrete_sequence=self.color_scheme,
+            color_continuous_scale=self.color_scheme,
         )
 
 
