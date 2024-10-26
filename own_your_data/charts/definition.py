@@ -122,7 +122,7 @@ class BaseChart:
                         and (data_type = 'INTEGER' or data_type like '%INT')
                     """,
         )
-        return is_integer.empty
+        return not is_integer.empty
 
     @timeit
     def get_plot(self) -> Figure:
@@ -188,32 +188,32 @@ class LineChart(BaseChart):
             # markers=True,
             # symbol=self.color_column,
         )
-
-        fig.update_xaxes(
-            rangeslider_visible=False,
-            rangemode="tozero",
-            rangeselector=dict(
-                buttons=list(
-                    [
-                        dict(count=1, label="1d", step="day", stepmode="backward"),
-                        dict(count=7, label="1w", step="day", stepmode="backward"),
-                        dict(count=14, label="2w", step="day", stepmode="backward"),
-                        dict(count=1, label="1m", step="month", stepmode="backward"),
-                        dict(count=3, label="3m", step="month", stepmode="backward"),
-                        dict(count=6, label="6m", step="month", stepmode="backward"),
-                        dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(count=1, label="1y", step="year", stepmode="backward"),
-                        dict(step="all"),
-                    ]
-                )
-            ),
-        )
-        fig.update_layout(
-            template="plotly_dark",
-            xaxis_rangeselector_font_color="black",
-            xaxis_rangeselector_activecolor=SECONDARY_COLOR,
-            xaxis_rangeselector_bgcolor=PRIMARY_COLOR,
-        )
+        if not self.x_integer:
+            fig.update_xaxes(
+                rangeslider_visible=False,
+                rangemode="tozero",
+                rangeselector=dict(
+                    buttons=list(
+                        [
+                            dict(count=1, label="1d", step="day", stepmode="backward"),
+                            dict(count=7, label="1w", step="day", stepmode="backward"),
+                            dict(count=14, label="2w", step="day", stepmode="backward"),
+                            dict(count=1, label="1m", step="month", stepmode="backward"),
+                            dict(count=3, label="3m", step="month", stepmode="backward"),
+                            dict(count=6, label="6m", step="month", stepmode="backward"),
+                            dict(count=1, label="YTD", step="year", stepmode="todate"),
+                            dict(count=1, label="1y", step="year", stepmode="backward"),
+                            dict(step="all"),
+                        ]
+                    )
+                ),
+            )
+            fig.update_layout(
+                template="plotly_dark",
+                xaxis_rangeselector_font_color="black",
+                xaxis_rangeselector_activecolor=SECONDARY_COLOR,
+                xaxis_rangeselector_bgcolor=PRIMARY_COLOR,
+            )
         return fig
 
 
