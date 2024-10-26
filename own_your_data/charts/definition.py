@@ -51,6 +51,10 @@ class BaseChart:
         self.where_expression = f"where {cast_expression} is not null"
         self.group_by = "" if self.aggregation_method == SupportedAggregationMethods.none else "group by all"
         self.validate_color_scheme()
+        self.x_integer = self.check_is_integer(column_name=self.dim_columns[0])
+        self.y_integer = False
+        if len(self.dim_columns) == 2:
+            self.y_integer = self.check_is_integer(column_name=self.dim_columns[1])
         self.sql_query = self.get_sql_query()
         self.data = self.get_data()
         self.category_orders = self.get_category_orders()
@@ -108,6 +112,19 @@ class BaseChart:
         return category_order
 
     @timeit
+    def check_is_integer(self, column_name):
+        is_integer = cache_duckdb_execution(
+            _duckdb_conn=self.duckdb_conn,
+            sql_query=f"""select 1
+                        from duckdb_columns
+                        where table_name='{self.table_name} '
+                        and column_name = '{column_name}'
+                        and (data_type = 'INTEGER' or data_type like '%INT')
+                    """,
+        )
+        return is_integer.empty
+
+    @timeit
     def get_plot(self) -> Figure:
         pass
 
@@ -142,6 +159,7 @@ class BarChart(BaseChart):
                 color=self.color_column,
                 category_orders=self.category_orders,
                 color_discrete_sequence=self.color_scheme,
+                color_continuous_scale=self.color_scheme,
             )
         return px.bar(
             data_frame=self.data,
@@ -151,6 +169,7 @@ class BarChart(BaseChart):
             color=self.color_column,
             category_orders=self.category_orders,
             color_discrete_sequence=self.color_scheme,
+            color_continuous_scale=self.color_scheme,
         )
 
 
