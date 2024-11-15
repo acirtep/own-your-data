@@ -1,0 +1,43 @@
+site_name: Own Your Data
+site_url: https://www.own-your-data.nl
+site_author: Petrica Leuca
+site_description: >-
+  Experiment and learn from your data, in the privacy of your browser.
+
+repo_name: acirtep/own-your-data
+repo_url: https://github.com/acirtep/own-your-data
+
+theme:
+  name: material
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+  font:
+    text: Garamond, serif
+
+nav:
+  - About:
+    - The why: index.md
+    - Getting started: getting-started.md
+  - FAQ:
+      - What does the application do?: about/ownyourdata.md
+      - What is Python?: about/python.md
+      - What is Pyodide?: about/pyodide.md
+      - What is DuckDB?: about/duckdb.md
+      - What is Streamlit?: about/streamlit.md
+      - What is Plotly?: about/plotly.md
+
+markdown_extensions:
+  - attr_list
+
+
+hooks:
+  - hooks.py

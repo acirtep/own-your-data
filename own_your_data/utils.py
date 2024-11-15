@@ -19,9 +19,14 @@ def timeit(func):
         start_time = time.perf_counter()
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
-        total_time = end_time - start_time
-        st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
-            {func.__name__.replace('_', ' ')} took {total_time * 1000: .4f} ms\n{st.session_state.logging}"
+        total_time = (end_time - start_time) * 1000
+        execution_time = datetime.datetime.now().isoformat()
+        function_name = func.__name__.replace("_", " ")
+        chart_configuration = kwargs.get("chart_configuration")
+        additional_message = (
+            f" for {chart_configuration.table_name}, {chart_configuration.plot_type}" if chart_configuration else ""
+        )
+        st.session_state.logging = f"{execution_time}: {function_name} {additional_message} took {total_time: .4f} ms\n{st.session_state.logging}"  # NOQA
         return result
 
     return timeit_wrapper

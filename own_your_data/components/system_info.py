@@ -80,5 +80,5 @@ def get_system_info():
         installed_packages.sort(key=operator.itemgetter("Name"))
         st.dataframe(installed_packages, column_config={"URL": st.column_config.LinkColumn()}, use_container_width=True)
 
-    with st.expander("Logging information"):
-        st.code(st.session_state.logging)
+    # with st.expander("Logging information"):
+    #     st.code(st.session_state.logging)

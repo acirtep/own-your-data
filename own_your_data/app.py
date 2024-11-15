@@ -1,4 +1,3 @@
-import datetime
 import uuid
 
 import streamlit as st
@@ -153,8 +152,6 @@ with chart_tab:
                     if chart_configuration:
                         chart_configuration = get_chart_layout(chart_configuration)
                         try:
-                            st.session_state.logging = f"{datetime.datetime.now().isoformat()}:\
-                            Generating {chart_configuration.plot_type} chart for {chart_configuration.table_name}"
                             get_charts_components(chart_configuration=chart_configuration)
                         except Exception as error:  # NOQA everything can go wrong
                             st.error(f"Something went wrong: {error}")
