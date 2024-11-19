@@ -34,7 +34,7 @@ def timeit(func):
 
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
-    duckdb_conn = duckdb.connect(f"{Path(__file__).parent}/own_your_data.db")
+    duckdb_conn = duckdb.connect(f"{str(Path.home())}/own-your-data/own_your_data.db")
     duckdb_conn.sql("SET allocator_background_threads=true;")
     return duckdb_conn
 
@@ -95,11 +95,12 @@ def gather_database_size(func):
 @gather_database_size
 @st.cache_resource
 def initial_load():
+    # TODO: move to database migration
     duckdb_conn = get_duckdb_conn()
-    duckdb_conn.execute("create sequence file_import_metadata_seq start 1")
+    duckdb_conn.execute("create sequence if not exists file_import_metadata_seq start 1")
     duckdb_conn.execute(
         """
-        create table file_import_metadata(
+        create table if not exists file_import_metadata(
             id integer default nextval('file_import_metadata_seq'),
             file_name varchar,
             table_name varchar,
@@ -112,7 +113,7 @@ def initial_load():
     duckdb_conn.execute(
         """
 
-        create table database_size_monitoring(
+        create table if not exists database_size_monitoring(
             observation_timestamp timestamp primary key,
             wal_size numeric,
             memory_usage numeric
@@ -121,7 +122,7 @@ def initial_load():
     )
     duckdb_conn.execute(
         """
-        create table calendar_t
+        create table if not exists calendar_t
         as
          select range AS calendar_date,
             year(calendar_date) as calendar_year,

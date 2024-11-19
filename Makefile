@@ -1,6 +1,5 @@
 local_run:
-	rm -rf ./own_your_data/own_your_data.db && streamlit run own_your_data/app.py
-
+	streamlit run own_your_data/app.py
 
 check:
 	pre-commit install --hook-type commit-msg --hook-type pre-push && \
@@ -11,4 +10,10 @@ demo_file:
 	python own_your_data/demo/generate_csv.py
 
 test:
-	pytest -v --durations 5 --cov own_your_data
+	pytest own_your_data/tests -v --durations 5 --cov own_your_data
+
+serve_desktop:
+	npm run dump && npm run serve
+
+docs:
+	mkdocs serve

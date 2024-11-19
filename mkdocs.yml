@@ -28,7 +28,8 @@ nav:
     - The why: index.md
     - Getting started: getting-started.md
   - FAQ:
-      - What does the application do?: about/ownyourdata.md
+      - What does the application do?: about/own_your_data.md
+      - Can I run the application locally?: about/local_run.md
       - What is Python?: about/python.md
       - What is Pyodide?: about/pyodide.md
       - What is DuckDB?: about/duckdb.md

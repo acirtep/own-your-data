@@ -1,0 +1,44 @@
+{
+  "name": "own-your-data",
+  "version": "0.1.0",
+  "main": "./build/electron/main.js",
+  "scripts": {
+    "dump": "dump-stlite-desktop-artifacts",
+    "serve": "cross-env NODE_ENV=production electron .",
+    "app:dir": "electron-builder --dir",
+    "app:dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "files": [
+      "build/**/*"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    }
+  },
+  "devDependencies": {
+    "@stlite/desktop": "^0.73.0",
+    "cross-env": "^7.0.3",
+    "electron": "33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "stlite": {
+    "desktop": {
+      "files": [
+        "own_your_data"
+      ],
+      "entrypoint": "own_your_data/app.py",
+      "dependencies": [
+        "plotly==5.24.1",
+        "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.1.2-cp312-cp312-pyodide_2024_0_wasm32.whl",
+        "streamlit-code-editor==0.1.21",
+        "sqlparse==0.5.1"
+      ],
+      "nodeJsWorker": true,
+      "nodefsMountpoints": {
+          "/home/pyodide/own-your-data": "{{home}}/own-your-data"
+      }
+    }
+  }
+}
