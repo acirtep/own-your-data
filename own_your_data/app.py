@@ -1,4 +1,5 @@
 import uuid
+from pathlib import Path
 
 import streamlit as st
 
@@ -22,6 +23,8 @@ from own_your_data.utils import get_tables
 from own_your_data.utils import initial_load
 
 st.set_page_config(layout="wide", page_title="Own Your Data Playground")
+
+Path(f"{str(Path.home())}/own-your-data").mkdir(exist_ok=True)
 
 st.markdown(
     """
