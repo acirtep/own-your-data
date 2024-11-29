@@ -1,3 +1,4 @@
+import random
 from io import BytesIO
 from pathlib import Path
 from unittest import mock
@@ -6,10 +7,13 @@ import pytest
 
 from own_your_data.charts.constants import SupportedAggregationMethods
 from own_your_data.charts.definition import BarChart
+from own_your_data.charts.definition import BaseChart
 from own_your_data.charts.definition import HeatMapChart
 from own_your_data.charts.definition import LineChart
+from own_your_data.charts.definition import PieChart
 from own_your_data.charts.definition import SankeyChart
 from own_your_data.charts.definition import ScatterChart
+from own_your_data.charts.definition import WorldMapChart
 from own_your_data.components.import_file import import_uploaded_file
 from own_your_data.components.import_file import process_imported_data
 
@@ -39,6 +43,31 @@ def duckdb_conn_with_final_csv_data(table_name, duckdb_conn):
             )
             process_imported_data(table_name)
     return duckdb_conn
+
+
+@pytest.mark.parametrize(
+    "aggregation, filter_value, expected_empty_data",
+    [
+        (random.choice(SupportedAggregationMethods.list()), "Escape ''", True),
+        (random.choice(SupportedAggregationMethods.list()), "Monday", False),
+    ],
+)
+def test_generic_class_filter(
+    duckdb_conn_with_final_csv_data, aggregation, filter_value, expected_empty_data, final_table_name
+):
+    generic_chart = BaseChart(
+        duckdb_conn=duckdb_conn_with_final_csv_data,
+        metric_column="Amount In EUR",
+        dim_columns=["Register Date Date Auto"],
+        color_column=None,
+        orientation=None,
+        aggregation_method=aggregation,
+        table_name=final_table_name,
+        filter_column="Register Date Day Name Auto",
+        filter_value=filter_value,
+    )
+
+    assert generic_chart.data.empty == expected_empty_data
 
 
 @pytest.mark.parametrize("aggregation", SupportedAggregationMethods.list())
@@ -123,3 +152,31 @@ def test_generate_scatter_chart(duckdb_conn_with_final_csv_data, aggregation, fi
         table_name=final_table_name,
     )
     assert scatter_chart.plot
+
+
+@pytest.mark.parametrize("aggregation", SupportedAggregationMethods.list())
+def test_generate_world_map_chart(duckdb_conn_with_final_csv_data, aggregation, final_table_name):
+    world_map_chart = WorldMapChart(
+        duckdb_conn=duckdb_conn_with_final_csv_data,
+        metric_column="Amount In EUR",
+        dim_columns=["Register Date Day Name Auto"],
+        color_column=None,
+        orientation=None,
+        aggregation_method=aggregation,
+        table_name=final_table_name,
+    )
+    assert world_map_chart.plot
+
+
+@pytest.mark.parametrize("aggregation", SupportedAggregationMethods.list())
+def test_generate_pie_chart(duckdb_conn_with_final_csv_data, aggregation, final_table_name):
+    pie_chart = PieChart(
+        duckdb_conn=duckdb_conn_with_final_csv_data,
+        metric_column="Amount In EUR",
+        dim_columns=["Register Date Day Name Auto"],
+        color_column=None,
+        orientation=None,
+        aggregation_method=aggregation,
+        table_name=final_table_name,
+    )
+    assert pie_chart.plot

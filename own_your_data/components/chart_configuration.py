@@ -6,6 +6,7 @@ from own_your_data.charts.definition import PLOT_TYPE_TO_CHART_CLASS
 from own_your_data.charts.definition import PLOT_TYPE_TO_COLOR_CLASS
 from own_your_data.charts.definition import ChartConfiguration
 from own_your_data.components.data_analysis import get_columns
+from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_plotly_colors
 from own_your_data.utils import timeit
@@ -34,10 +35,16 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
     orientation = None
     metric_column = st.selectbox("Calculation column", columns, index=None)
     x_column = None
-    if plot_type not in [SupportedPlots.sankey]:
+    if plot_type not in [SupportedPlots.sankey, SupportedPlots.world_map, SupportedPlots.pie]:
         x_column = st.selectbox("X-axis", columns, index=None)
     y_column = None
-    if plot_type not in [SupportedPlots.sankey, SupportedPlots.line, SupportedPlots.bar]:
+    if plot_type not in [
+        SupportedPlots.sankey,
+        SupportedPlots.line,
+        SupportedPlots.bar,
+        SupportedPlots.world_map,
+        SupportedPlots.pie,
+    ]:
         y_column = st.selectbox(
             "Y-axis",
             columns,
@@ -45,7 +52,7 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
             help="When disabled the calculation column is on the Y-axis",
         )
     color_column = None
-    if plot_type not in [SupportedPlots.sankey, SupportedPlots.heatmap]:
+    if plot_type not in [SupportedPlots.sankey, SupportedPlots.heatmap, SupportedPlots.world_map, SupportedPlots.pie]:
         color_column = st.selectbox(
             "Color column",
             columns,
@@ -117,6 +124,24 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
                 orientation = None
                 requirements_met = True
 
+        case SupportedPlots.world_map:
+            x_column = st.selectbox(
+                "Country column",
+                columns,
+                index=None,
+                help="""Select the column which contains the country code
+                in [alpha 3 format](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)""",
+            )
+            if all([metric_column, x_column]):
+                dim_columns = [x_column]
+                requirements_met = True
+
+        case SupportedPlots.pie:
+            x_column = st.selectbox("Dimension", columns, index=None)
+            if all([metric_column, x_column]):
+                dim_columns = [x_column]
+                requirements_met = True
+
         case _:
             dim_columns = None
             color_column = None
@@ -126,6 +151,18 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
 
     if not requirements_met:
         return None
+
+    filter_column = st.selectbox("Filter on", columns, index=None)
+    filter_value = None
+
+    if filter_column:
+        duckdb_conn = get_duckdb_conn()
+        filter_value = st.selectbox(
+            "Exact match on",
+            cache_duckdb_execution(duckdb_conn, f'select distinct "{filter_column}" from {table_name}'),
+            index=None,
+            key="exact-match-on",
+        )
 
     return ChartConfiguration(
         plot_type=plot_type,
@@ -141,6 +178,9 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
         height=None,
         x_label=x_column,
         y_label=y_column,
+        color_label=color_column,
+        filter_column=filter_column,
+        filter_value=filter_value,
     )
 
 
@@ -148,8 +188,8 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
     if not chart_configuration:
         return None
     with st.expander("Configure layout"):
-        color_legend_col, color_col, title_col, x_col, y_col, height_col = st.columns(
-            [0.5, 1, 1, 1, 1, 1], vertical_alignment="bottom"
+        color_legend_col, color_col, title_col, x_col, y_col, color_label_col, height_col, hide_legend_col = st.columns(
+            [0.5, 1, 1, 1, 1, 1, 1, 0.5], vertical_alignment="bottom", gap="small"
         )
         chart_configuration.title = title_col.text_input("Title", value="Title")
         plot_color_scheme = PLOT_TYPE_TO_COLOR_CLASS.get(chart_configuration.plot_type)
@@ -183,16 +223,24 @@ def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartCon
             link_color = color_col.color_picker("🎨 Link", value="#30A852")
             chart_configuration.color_scheme = [node_color, link_color]
 
-        if chart_configuration.plot_type not in [SupportedPlots.sankey]:
+        if chart_configuration.plot_type not in [SupportedPlots.sankey, SupportedPlots.world_map, SupportedPlots.pie]:
             chart_configuration.x_label = x_col.text_input("X-axis label", value=chart_configuration.x_label)
 
-        if chart_configuration.plot_type not in [SupportedPlots.sankey]:
+        if chart_configuration.plot_type not in [SupportedPlots.sankey, SupportedPlots.world_map, SupportedPlots.pie]:
 
             chart_configuration.y_label = y_col.text_input(
                 "Y-axis label", value=chart_configuration.y_label or chart_configuration.metric_column
             )
+
+        if chart_configuration.plot_type in [SupportedPlots.heatmap, SupportedPlots.world_map]:
+
+            chart_configuration.color_label = color_label_col.text_input(
+                "Color axis label", value=chart_configuration.color_column or chart_configuration.metric_column
+            )
+
         chart_configuration.height = height_col.slider("Height", min_value=400, max_value=4000, step=50, value=400)
 
+        chart_configuration.hide_legend = hide_legend_col.checkbox("Hide legend")
     return chart_configuration
 
 
@@ -206,6 +254,8 @@ def get_cached_plot(
     aggregation_method: SupportedAggregationMethods,
     table_name: str,
     color_scheme: list[str] | None,
+    filter_column: str | None,
+    filter_value: list[str] | None,
 ):
     duckdb_conn = get_duckdb_conn()
     chart_class = PLOT_TYPE_TO_CHART_CLASS.get(plot_type)
@@ -222,6 +272,8 @@ def get_cached_plot(
         aggregation_method=aggregation_method,
         table_name=table_name,
         color_scheme=color_scheme,
+        filter_column=filter_column,
+        filter_value=filter_value,
     )
 
 
@@ -236,17 +288,21 @@ def get_charts_components(chart_configuration: ChartConfiguration):
         aggregation_method=chart_configuration.aggregation_method,
         table_name=chart_configuration.table_name,
         color_scheme=chart_configuration.color_scheme,
+        filter_column=chart_configuration.filter_column,
+        filter_value=chart_configuration.filter_value,
     )
 
     fig_plot = chart_class.plot
     sql_query = chart_class.sql_query
 
     fig_plot.update_layout(
-        title=chart_configuration.title,
+        title={"text": chart_configuration.title},
         height=chart_configuration.height,
         width=chart_configuration.width,
         font_size=14,
         font_color="black",
+        showlegend=not chart_configuration.hide_legend,
+        coloraxis_colorbar={"title": chart_configuration.color_label},
     )
 
     if chart_configuration.x_label:
