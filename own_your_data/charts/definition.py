@@ -28,6 +28,8 @@ class BaseChart:
         table_name: str,
         aggregation_method: str = SupportedAggregationMethods.count.value,
         color_scheme: list[str] | None = None,
+        filter_column: str | None = None,
+        filter_value: str | None = None,
     ):
         self.duckdb_conn = duckdb_conn
         self.metric_column = metric_column
@@ -37,6 +39,7 @@ class BaseChart:
         self.aggregation_method = aggregation_method
         self.table_name = table_name
         self.color_scheme = color_scheme
+        self.filter_column = filter_column
 
         cast_expression = (
             f'"{metric_column}"'
@@ -49,6 +52,9 @@ class BaseChart:
             else f"round({self.aggregation_method}({cast_expression}), 2)"
         )
         self.where_expression = f"where {cast_expression} is not null"
+        if self.filter_column and filter_value:
+            cleaned_filter_value = filter_value.replace("'", "''")
+            self.where_expression = f" {self.where_expression} and \"{self.filter_column}\" = '{cleaned_filter_value}'"
         self.group_by = "" if self.aggregation_method == SupportedAggregationMethods.none else "group by all"
         self.validate_color_scheme()
         self.x_integer = self.check_is_integer(column_name=self.dim_columns[0])
@@ -228,6 +234,8 @@ class SankeyChart(BaseChart):
         table_name: str,
         aggregation_method: str = SupportedAggregationMethods.count.value,
         color_scheme: Optional[px.colors.sequential] = px.colors.sequential.Mint,
+        filter_column: str | None = None,
+        filter_value: list[str] | None = None,
     ):
         super().__init__(
             duckdb_conn=duckdb_conn,
@@ -242,6 +250,8 @@ class SankeyChart(BaseChart):
             ),
             table_name=table_name,
             color_scheme=color_scheme,
+            filter_column=filter_column,
+            filter_value=filter_value,
         )
 
     @timeit
@@ -543,12 +553,38 @@ class ScatterChart(BaseChart):
         )
 
 
+class WorldMapChart(BaseChart):
+
+    @timeit
+    def get_plot(self) -> Figure:
+        return px.choropleth(
+            self.data,
+            locations=self.dim_columns[0],
+            color=self.metric_column,
+            color_continuous_scale=self.color_scheme,
+            projection="natural earth",
+        )
+
+
+class PieChart(BaseChart):
+
+    @timeit
+    def get_plot(self) -> Figure:
+        fig = px.pie(
+            self.data, values=self.metric_column, names=self.dim_columns[0], color_discrete_sequence=self.color_scheme
+        )
+        fig.update_traces(textposition="inside", textinfo="percent+label")
+        return fig
+
+
 PLOT_TYPE_TO_CHART_CLASS = {
     SupportedPlots.bar: BarChart,
     SupportedPlots.line: LineChart,
     SupportedPlots.sankey: SankeyChart,
     SupportedPlots.heatmap: HeatMapChart,
     SupportedPlots.scatter: ScatterChart,
+    SupportedPlots.world_map: WorldMapChart,
+    SupportedPlots.pie: PieChart,
 }
 
 PLOT_TYPE_TO_COLOR_CLASS = {
@@ -557,6 +593,8 @@ PLOT_TYPE_TO_COLOR_CLASS = {
     SupportedPlots.heatmap: px.colors.sequential,
     SupportedPlots.scatter: px.colors.sequential,
     SupportedPlots.sankey: None,
+    SupportedPlots.world_map: px.colors.sequential,
+    SupportedPlots.pie: px.colors.sequential,
 }
 
 
@@ -572,6 +610,10 @@ class ChartConfiguration:
     title: str | None
     x_label: str | None
     y_label: str | None
+    color_label: str | None
     height: int | None
     width: int | None
     color_scheme: list[str] | None
+    filter_column: str | None
+    filter_value: str | None
+    hide_legend: bool = False

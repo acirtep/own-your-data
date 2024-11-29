@@ -14,6 +14,8 @@ class SupportedPlots(str, ExtendedEnum):
     heatmap = "heatmap"
     scatter = "scatter"
     sankey = "sankey"
+    world_map = "world-map"
+    pie = "pie"
 
 
 class SupportedAggregationMethods(str, ExtendedEnum):

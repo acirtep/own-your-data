@@ -34,7 +34,8 @@ if __name__ == "__main__":
         copy (select range::datetime as register_date,
             random_category() as category,
             random_store() as store,
-            random_price() as "amount in EuR"
+            random_price() as "amount in EuR",
+            'NLD' as "country iso code 3"
           from
           range(date '2024-01-31 00:00:00', date '2024-12-31 00:00:00', interval '28' hour)    ,
           generate_series(1, 1)) to '{file_path}'
