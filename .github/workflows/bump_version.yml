@@ -20,3 +20,9 @@ jobs:
         uses: commitizen-tools/commitizen-action@master
         with:
           github_token: ${{ secrets.OWN_YOUR_DATA_ACCESS_TOKEN }}
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.REVISION }}
+          bodyFile: "body.md"
+          skipIfReleaseExists: true
