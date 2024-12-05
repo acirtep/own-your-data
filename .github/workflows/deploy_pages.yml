@@ -4,7 +4,8 @@ name: Deploy static content to Pages
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
+    tags:
+      - '*'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -22,8 +23,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install --with test
+      - name: Run tests
+        run: poetry run pytest -v --durations 5 --cov own_your_data
   deploy:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -34,7 +52,7 @@ jobs:
       - name: Get Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: "3.12"
       - name: Install mkdocs
         run: pip install mkdocs-material
       - name: Build site

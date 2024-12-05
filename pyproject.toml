@@ -24,6 +24,7 @@ black = "^24.8.0"
 flake8 = "^7.1.1"
 pre-commit = "^3.8.0"
 mkdocs-material = "^9.5.44"
+commitizen = "^4.0.0"
 
 
 
@@ -42,3 +43,11 @@ force_single_line = "true"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+version_files = [
+  "pyproject.toml:version"
+]
