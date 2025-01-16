@@ -1,3 +1,10 @@
+## v0.2.3 (2025-01-16)
+
+### Fix
+
+- upgrade packages
+- upd poetry
+
 ## v0.2.2 (2024-12-05)
 
 ### Fix
