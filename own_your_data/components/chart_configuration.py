@@ -159,9 +159,21 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
         duckdb_conn = get_duckdb_conn()
         filter_value = st.selectbox(
             "Exact match on",
-            cache_duckdb_execution(duckdb_conn, f'select distinct "{filter_column}" from {table_name}'),
+            cache_duckdb_execution(
+                duckdb_conn,
+                f"""
+                select "{filter_column}" from (
+                    select "{filter_column}", count(*) as cnt
+                    from {table_name}
+                    group by 1
+                    ) as src
+                order by cnt desc
+                limit 100
+            """,
+            ),
             index=None,
             key="exact-match-on",
+            help="The top 100 most encountered values",
         )
 
     return ChartConfiguration(
@@ -180,7 +192,7 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
         y_label=y_column,
         color_label=color_column,
         filter_column=filter_column,
-        filter_value=filter_value,
+        filter_value=str(filter_value) if filter_value else None,
     )
 
 
