@@ -8,10 +8,10 @@ packages = [{include = "own_your_data"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-streamlit = "^1.38.0"
+streamlit = "^1.40.0"
 duckdb = "^1.1.1"
 plotly = "^5.24.1"
-fsspec = "^2024.9.0"
+fsspec = "^2024.12.0"
 sqlalchemy = "^2.0.35"
 duckdb-engine = "^0.13.2"
 streamlit-code-editor = "^0.1.21"

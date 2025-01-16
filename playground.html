@@ -5,23 +5,24 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
     <title>Own Your Data Playground</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.1/build/stlite.css"/>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.2/build/style.css"
+    />
 </head>
 <body>
 <div id="root"></div>
-<script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.1/build/stlite.js"></script>
-<script type="text/javascript">
+<script type="module">
+    import * as stlite from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.2/build/stlite.js";
     stlite.mount(
         {
-            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js",
+            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js",
             requirements: [
                 "plotly==5.24.1",
-                "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.1.2-cp312-cp312-pyodide_2024_0_wasm32.whl",
-                "fsspec==2024.9.0",
+                "duckdb==1.1.2",
+                "fsspec==2024.12.0",
                 "streamlit-code-editor==0.1.21",
-                "sqlparse==0.5.2"
-                // "sqlalchemy==2.0.35",
-                // "duckdb-engine==0.13.2"
+                "sqlparse==0.5.3"
             ],
             streamlitConfig: {
                 "client.showErrorDetails": false,
