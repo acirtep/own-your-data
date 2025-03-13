@@ -1,14 +1,13 @@
-from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
 import pytest
 from duckdb import CatalogException
 
-from own_your_data.components.import_file import cleanup_db
 from own_your_data.components.import_file import get_auto_column_expressions
 from own_your_data.components.import_file import import_uploaded_file
 from own_your_data.components.import_file import process_imported_data
+from own_your_data.utils import cleanup_db
 
 test_file_path = f"{Path(__file__).parent}/test_csv.csv"
 
@@ -28,12 +27,11 @@ def duckdb_conn_with_initial_csv_data(duckdb_conn, table_name):
     with mock.patch("own_your_data.components.import_file.get_duckdb_conn", return_value=duckdb_conn), mock.patch(
         "own_your_data.utils.get_duckdb_conn", return_value=duckdb_conn
     ):
-        with open(test_file_path, "r") as f:
-            import_uploaded_file(
-                data_source=BytesIO(f.read().encode()),
-                table_name=table_name,
-                file_name="test_csv.csv",
-            )
+        import_uploaded_file(
+            data_source=test_file_path,
+            table_name=table_name,
+            file_name="test_csv.csv",
+        )
         return duckdb_conn
 
 
@@ -42,12 +40,11 @@ def test_import_file(duckdb_conn, table_name):
         "own_your_data.utils.get_duckdb_conn", return_value=duckdb_conn
     ):
         cleanup_db(table_name)
-        with open(test_file_path, "r") as f:
-            import_uploaded_file(
-                data_source=BytesIO(f.read().encode()),
-                table_name=table_name,
-                file_name="test_csv.csv",
-            )
+        import_uploaded_file(
+            data_source=test_file_path,
+            table_name=table_name,
+            file_name="test_csv.csv",
+        )
 
     assert duckdb_conn.sql(f"select * from {table_name}")
 

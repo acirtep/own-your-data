@@ -15,6 +15,7 @@ The application is available at: https://www.own-your-data.nl
 Running the application locally, a directory `own-your-data` will be created automatically in your $home directory.
 
 ## with Pyodide
+⚠️ Might not work on certain Safari/iOS systems.
 1. Install Python 3.12 or greater
 2. Run `python3 -m http.server`
 3. Go to http://localhost:8000/playground.html, which will open the application in your browser

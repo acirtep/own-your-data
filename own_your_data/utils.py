@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import shutil
 import time
 from functools import wraps
 from pathlib import Path
@@ -9,6 +10,10 @@ import streamlit as st
 from streamlit.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def add_timestamp_to_str(input_str: str):
+    return f"{input_str}_{datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')}"
 
 
 def timeit(func):
@@ -34,9 +39,19 @@ def timeit(func):
 
 @st.cache_resource
 def get_duckdb_conn() -> duckdb.DuckDBPyConnection:
-    duckdb_conn = duckdb.connect(f"{str(Path.home())}/own-your-data/own_your_data.db")
+    duckdb_conn = duckdb.connect(f"{str(Path.home())}/own-your-data/own_your_data.duckdb")
     duckdb_conn.sql("SET allocator_background_threads=true;")
     return duckdb_conn
+
+
+@timeit
+def export_database_and_zip():
+    export_directory = f"{str(Path.home())}/own-your-data/export"
+    duckdb_conn = get_duckdb_conn()
+    duckdb_conn.sql(f"export database '{export_directory}'")
+    file_name = f"{str(Path.home())}/own-your-data/{add_timestamp_to_str('own_your_data')}"
+    shutil.make_archive(file_name, "zip", export_directory)
+    return f"{file_name}.zip"
 
 
 def get_tables():
@@ -47,61 +62,55 @@ def get_tables():
             """
                 select src.table_name from
                     information_schema.tables src
-                left join (select table_name,
-                            end_import_datetime
-                            from file_import_metadata
-                            where end_import_datetime is not null
-                            qualify row_number() over (partition by table_name order by id desc) = 1
-                        ) fm
-                    on src.table_name = fm.table_name
                 order by src.table_name
                 """
         ).fetchall()
     ]
 
 
-def insert_database_size():
-    duckdb_conn = get_duckdb_conn()
-    db_size_df = duckdb_conn.execute("pragma database_size").df()  # NOQA
-    duckdb_conn.execute(
-        """
-        insert into database_size_monitoring
-        select current_timestamp,
-            case split_part(wal_size, ' ', 2)
-             when 'KiB' then split_part(wal_size, ' ', 1)::numeric / 1024
-             when 'MiB' then split_part(wal_size, ' ', 1):: numeric
-             when 'GiB' then split_part(wal_size, ' ', 1):: numeric * 1024
-            end wal_size,
-            case split_part(memory_usage, ' ', 2)
-             when 'KiB' then split_part(memory_usage, ' ', 1)::numeric / 1024
-             when 'MiB' then split_part(memory_usage, ' ', 1):: numeric
-             when 'GiB' then split_part(memory_usage, ' ', 1):: numeric * 1024
-            end memory_usage
-        from db_size_df
-    """
-    )
+@timeit
+# TODO investigate why analyze takes 2 seconds the first time
+def insert_database_size(duckdb_conn):
+    pass
+    # db_size_df = duckdb_conn.execute("pragma database_size").df()  # NOQA
+    # duckdb_conn.execute(
+    #     """
+    #     insert into database_size_monitoring
+    #     select current_timestamp,
+    #         case split_part(wal_size, ' ', 2)
+    #          when 'KiB' then split_part(wal_size, ' ', 1)::numeric / 1024
+    #          when 'MiB' then split_part(wal_size, ' ', 1):: numeric
+    #          when 'GiB' then split_part(wal_size, ' ', 1):: numeric * 1024
+    #         end wal_size,
+    #         case split_part(memory_usage, ' ', 2)
+    #          when 'KiB' then split_part(memory_usage, ' ', 1)::numeric / 1024
+    #          when 'MiB' then split_part(memory_usage, ' ', 1):: numeric
+    #          when 'GiB' then split_part(memory_usage, ' ', 1):: numeric * 1024
+    #         end memory_usage
+    #     from db_size_df
+    # """
+    # )
 
 
 def gather_database_size(func):
     @wraps(func)
     def gather_database_size_wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
-        insert_database_size()
+        insert_database_size(duckdb_conn=get_duckdb_conn())
         return result
 
     return gather_database_size_wrapper
 
 
-@gather_database_size
+@timeit
 @st.cache_resource
 def initial_load():
     # TODO: move to database migration
     duckdb_conn = get_duckdb_conn()
-    duckdb_conn.execute("create sequence if not exists file_import_metadata_seq start 1")
     duckdb_conn.execute(
         """
         create table if not exists file_import_metadata(
-            id integer default nextval('file_import_metadata_seq'),
+            id integer,
             file_name varchar,
             table_name varchar,
             start_import_datetime timestamp,
@@ -173,3 +182,9 @@ def get_plotly_colors(plot_color):
 @st.cache_data
 def cache_duckdb_execution(_duckdb_conn, sql_query):
     return _duckdb_conn.execute(sql_query).df()
+
+
+@gather_database_size
+def cleanup_db(table_name, object_type="table"):
+    duckdb_conn = get_duckdb_conn()
+    duckdb_conn.execute(f"drop {object_type}  if exists {table_name}")

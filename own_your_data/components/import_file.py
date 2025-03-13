@@ -1,20 +1,14 @@
 import re
-from io import BytesIO
 from pathlib import Path
-from typing import IO
 from zipfile import ZipFile
 
-from streamlit.runtime.uploaded_file_manager import UploadedFile
+import streamlit as st
 
+from own_your_data.utils import add_timestamp_to_str
+from own_your_data.utils import cleanup_db
 from own_your_data.utils import gather_database_size
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import timeit
-
-
-@gather_database_size
-def cleanup_db(table_name):
-    duckdb_conn = get_duckdb_conn()
-    duckdb_conn.execute(f"drop table  if exists {table_name}")
 
 
 def clean_column_name(column_name: str) -> str:
@@ -27,14 +21,16 @@ def get_table_name(file_name: str) -> str:
 
 
 @timeit
-def get_unzipped_data(data_source: UploadedFile) -> list[IO[bytes]]:
-    with ZipFile(data_source) as imported_zip:
-        return [imported_zip.open(file) for file in imported_zip.namelist() if file.endswith((".csv", ".txt"))]
+def get_unzipped_data(data_source, file_types):
+    extract_dir = f"{str(Path.home())}/own-your-data/imports/unzipped"
+    with ZipFile(data_source) as zip_files:
+        zip_files.extractall(extract_dir)
+    return [file for file in Path(extract_dir).iterdir() if file.is_file() and file.suffix.lower() in file_types]
 
 
 @timeit
 @gather_database_size
-def import_uploaded_file(data_source: list[UploadedFile] | list[IO[bytes]], table_name, file_name):
+def import_uploaded_file(data_source, table_name, file_name):
     duckdb_conn = get_duckdb_conn()
     imported_data = duckdb_conn.read_csv(data_source)  # NOQA
     duckdb_conn.execute(f"create table {table_name} as select * from imported_data")
@@ -42,9 +38,12 @@ def import_uploaded_file(data_source: list[UploadedFile] | list[IO[bytes]], tabl
     duckdb_conn.execute(
         f"""
         insert into file_import_metadata
-        (file_name, table_name, start_import_datetime)
+        (id, file_name, table_name, start_import_datetime)
             values
-        ('{file_name}', '{table_name}_t', current_timestamp)
+        (   -- TODO handle sequence in copy database
+            (select max(id)  from file_import_metadata where table_name = '{table_name}_t') + 1,
+            '{file_name}', '{table_name}_t', current_timestamp
+        )
     """
     )
 
@@ -119,41 +118,66 @@ def process_imported_data(table_name: str, add_auto_columns: bool = True):
     """
     )
 
-    #
-    # unique_values_query = " union all ".join(
-    #     [
-    #         f"""select '{column[0]}' as column_name,
-    #             array_agg(distinct "{column[0]}" order by {get_order_clause(column[0])}) as unique_value
-    #             from csv_import_t
-    #         """
-    #         for column in duckdb_conn.execute(
-    #             "select column_name from duckdb_columns where table_name='csv_import_t'"
-    #         ).fetchall()
-    #     ]
-    # )
-    #
-    # duckdb_conn.execute(
-    #     f"""create table csv_import_summary_t as
-    #         with unique_values_cte as (
-    #             {unique_values_query}
-    #         )
-    #             select t.* , string_agg(uvc.unique_value[:50], ',') as first_50_unique_values
-    #             from (SUMMARIZE csv_import_t) t
-    #                 left join unique_values_cte uvc on t.column_name = uvc.column_name
-    #             group by all
-    # """
-    # )
-    #
     duckdb_conn.execute(f"drop table {table_name}")
 
 
+@timeit
 def import_demo_file():
-    with open(f"{Path(__file__).parent.parent}/demo/demo_file.txt", "r") as demo_file:
-        table_name = get_table_name("demo_file.txt")
-        cleanup_db(table_name=f"{table_name}_t")
-        import_uploaded_file(
-            data_source=BytesIO(demo_file.read().encode()),
-            table_name=table_name,
-            file_name="demo_file.txt",
+    table_name = get_table_name("demo_file.txt")
+    cleanup_db(table_name=f"{table_name}_t")
+    import_uploaded_file(
+        data_source=f"{Path(__file__).parent.parent}/demo/demo_file.txt",
+        table_name=table_name,
+        file_name="demo_file.txt",
+    )
+    process_imported_data(table_name=table_name)
+
+
+@gather_database_size
+def copy_imported_database(file_name: str, original_file_name: str):
+    duckdb_conn = get_duckdb_conn()
+
+    # attach file as database
+    duckdb_conn.sql("detach database if exists own_your_data_import")
+    duckdb_conn.sql(f"attach '{file_name}' as own_your_data_import")
+
+    # remove technical tables
+    duckdb_conn.sql("drop table if exists own_your_data_import.file_import_metadata")
+    duckdb_conn.sql("drop table if exists own_your_data_import.database_size_monitoring")
+    duckdb_conn.sql("drop table if exists own_your_data_import.calendar_t")
+
+    # rename common tables
+    import_date_suffix = f"{add_timestamp_to_str(Path(original_file_name).stem)}"
+    for unaccepted_char in [".", " "]:
+        import_date_suffix = import_date_suffix.replace(unaccepted_char, "_")
+
+    common_tables = duckdb_conn.sql(
+        "select table_name from information_schema.tables group by 1 having count(*)>1"
+    ).set_alias("duplicated_tbl")
+    common_tables_import = (
+        duckdb_conn.sql(
+            "select table_name, table_type from information_schema.tables where table_catalog = 'own_your_data_import'"
         )
-        process_imported_data(table_name=table_name)
+        .set_alias("imported_db")
+        .join(common_tables, "imported_db.table_name = duplicated_tbl.table_name")
+        .select("imported_db.table_name, imported_db.table_type")
+        .fetchall()
+    )
+
+    try:
+        for common_table in common_tables_import:
+            object_type = common_table[1] if common_table[1] == "VIEW" else "table"
+            if st.session_state.import_type == "overwrite":
+                cleanup_db(f"own_your_data.{common_table[0]}", object_type)
+            else:
+                duckdb_conn.sql(
+                    f"""alter {object_type} own_your_data_import.{common_table[0]}
+                    rename to {common_table[0]}_{import_date_suffix}"""
+                )
+
+        # copy from imported database to current database and detach
+        duckdb_conn.sql("copy from database own_your_data_import to own_your_data")
+    except Exception as err:
+        raise err
+    finally:
+        duckdb_conn.sql("detach database if exists own_your_data_import")
