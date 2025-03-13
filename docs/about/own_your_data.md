@@ -2,6 +2,8 @@
 
 ## Import Data
 Browse local files and upload a file, which contains data you are interested to analyze.
+One could also upload a previously created `.duckdb` database file and choose between overwriting existing objects
+and renaming the imported ones by adding a timestamp.
 
 ![import](images/import.png)
 
@@ -16,6 +18,12 @@ will be added:
 The uploaded data will be saved in a table prefixed with `file_` and suffixed with `_t`. For example, the demo file
 `demo_file.txt` is loaded in the table named `file_demo_table_txt_t`.
 
+## Export Data
+
+The entire database can be exported to either a `.duckdb` database file, either as an archive which will contain
+the data in `csv` files and the schema definition in `sql` files.
+
+![export](images/export.png)
 
 ## Visualize Data
 
@@ -25,9 +33,17 @@ your color preference:
 ![charts](images/charts.png)
 
 
-## Modify Data
+## Data Exploration in SQL
 
 Use the SQL editor to write SQL (DuckDB syntax) in order to view or modify the data. You can also download
 the modified data:
 
 ![sql editor](images/sql_editor.png)
+
+## Data Exploration in Python
+
+Use the Python editor to interact with the data with the `duckdb` Python module and create your own charts with
+Streamlit or Plotly:
+![py editor](images/py_editor.png)
+
+⚠️The Python editor is work in progress.

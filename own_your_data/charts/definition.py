@@ -107,7 +107,7 @@ class BaseChart:
                 _duckdb_conn=self.duckdb_conn,
                 sql_query=f"""
                         select distinct "{column}"
-                        from {self.table_name} src
+                        from ({self.sql_query}) src
                         where try_cast("{column}" as numeric) is null
                         and try_cast("{column}" as date) is null
                         order by {get_order_clause(column)}
@@ -201,13 +201,10 @@ class LineChart(BaseChart):
                 rangeselector=dict(
                     buttons=list(
                         [
-                            dict(count=1, label="1d", step="day", stepmode="backward"),
                             dict(count=7, label="1w", step="day", stepmode="backward"),
-                            dict(count=14, label="2w", step="day", stepmode="backward"),
                             dict(count=1, label="1m", step="month", stepmode="backward"),
                             dict(count=3, label="3m", step="month", stepmode="backward"),
                             dict(count=6, label="6m", step="month", stepmode="backward"),
-                            dict(count=1, label="YTD", step="year", stepmode="todate"),
                             dict(count=1, label="1y", step="year", stepmode="backward"),
                             dict(step="all"),
                         ]
@@ -215,6 +212,7 @@ class LineChart(BaseChart):
                 ),
             )
             fig.update_layout(
+                overwrite=True,
                 template="plotly_dark",
                 xaxis_rangeselector_font_color="black",
                 xaxis_rangeselector_activecolor=SECONDARY_COLOR,
@@ -441,6 +439,10 @@ class SankeyChart(BaseChart):
         #         )
         #     )
         return fig
+
+    @timeit
+    def get_category_orders(self):
+        return {}
 
 
 class HeatMapChart(BaseChart):

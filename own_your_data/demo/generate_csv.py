@@ -1,10 +1,10 @@
-import datetime
 import os
 import random
 
 import duckdb
 from duckdb.typing import DOUBLE
 from duckdb.typing import VARCHAR
+from utils import add_timestamp_to_str
 
 
 def random_category():
@@ -26,7 +26,8 @@ if __name__ == "__main__":
     duckdb_conn.create_function("random_price", random_price, [], DOUBLE, type="native", side_effects=True)
 
     file_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), f"demo_csv_{datetime.datetime.now().isoformat()}.csv"
+        os.path.dirname(os.path.abspath(__file__)),
+        f"{add_timestamp_to_str('demo_csv')}.csv",
     )
 
     duckdb_conn.execute(

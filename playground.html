@@ -6,28 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
     <title>Own Your Data Playground</title>
     <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.2/build/style.css"
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@stlite/browser@0.80.1/build/style.css"
     />
 </head>
 <body>
 <div id="root"></div>
 <script type="module">
-    import * as stlite from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.76.2/build/stlite.js";
-    stlite.mount(
-        {
-            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js",
+    import * as stlite from "https://cdn.jsdelivr.net/npm/@stlite/browser@0.80.1/build/stlite.js";
+
+    stlite.mount({
+            pyodideUrl: "https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js",
             requirements: [
-                "plotly==5.24.1",
+                // randomly fails :(
+                // "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.2.0-cp312-cp312-pyodide_2024_0_wasm32.whl",
                 "duckdb==1.1.2",
-                "fsspec==2024.12.0",
+                "plotly==6.0.0",
                 "streamlit-code-editor==0.1.21",
-                "sqlparse==0.5.3"
+                "sqlparse==0.5.3",
+                "orjson==3.10.1"
             ],
             streamlitConfig: {
                 "client.showErrorDetails": false,
                 "browser.gatherUsageStats": false,
-                "server.maxUploadSize": 10,
+                "server.maxUploadSize": 200,
                 "logger.level": "warning",
                 "client.showSidebarNavigation": false
             },
@@ -60,16 +62,20 @@
                 "own_your_data/components/sql_editor.py": {
                     url: "own_your_data/components/sql_editor.py"
                 },
+                "own_your_data/components/python_editor.py": {
+                    url: "own_your_data/components/python_editor.py"
+                },
                 "own_your_data/components/system_info.py": {
                     url: "own_your_data/components/system_info.py"
                 },
                 "own_your_data/demo/demo_file.txt": {
                     url: "own_your_data/demo/demo_file.txt"
                 },
-            },
+            }
         },
         document.getElementById("root")
     );
+
 </script>
 </body>
 </html>

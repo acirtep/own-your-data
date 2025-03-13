@@ -5,9 +5,8 @@ from importlib import metadata
 
 import streamlit as st
 
-from own_your_data.charts.constants import SupportedAggregationMethods
-from own_your_data.charts.definition import LineChart
 from own_your_data.utils import get_duckdb_conn
+from own_your_data.utils import timeit
 
 
 @st.cache_resource()
@@ -33,6 +32,7 @@ def get_platform_info():
     }
 
 
+@timeit
 def get_system_info():
     (
         duckdb_max_size_col,
@@ -56,29 +56,30 @@ def get_system_info():
     duckdb_wal_size_col.metric("DuckDB WAL Size", value=duckdb_size["wal_size"][0])
     duckdb_memory_size_col.metric("DuckDB Memory Usage", value=duckdb_size["memory_usage"][0])
 
-    memory_usage_chart = LineChart(
-        duckdb_conn=duckdb_conn,
-        metric_column="memory_usage",
-        dim_columns=["observation_timestamp"],
-        color_column=None,
-        orientation=None,
-        aggregation_method=SupportedAggregationMethods.none,
-        table_name="database_size_monitoring",
-    )
-    memory_usage_plot = memory_usage_chart.plot
-    memory_usage_plot.update_layout(
-        title="DuckDB Memory Usage",
-        font_size=14,
-        font_color="black",
-        xaxis_title="Observation Time",
-        yaxis_title="Memory Usage in MiB",
-    )
-    st.plotly_chart(memory_usage_plot, use_container_width=True)
+    # TODO once analyze is fixed re-enable
+    # memory_usage_chart = LineChart(
+    #     duckdb_conn=duckdb_conn,
+    #     metric_column="memory_usage",
+    #     dim_columns=["observation_timestamp"],
+    #     color_column=None,
+    #     orientation=None,
+    #     aggregation_method=SupportedAggregationMethods.none,
+    #     table_name="database_size_monitoring",
+    # )
+    # memory_usage_plot = memory_usage_chart.plot
+    # memory_usage_plot.update_layout(
+    #     title="DuckDB Memory Usage",
+    #     font_size=14,
+    #     font_color="black",
+    #     xaxis_title="Observation Time",
+    #     yaxis_title="Memory Usage in MiB",
+    # )
+    # st.plotly_chart(memory_usage_plot, use_container_width=True)
 
     with st.expander("Installed Python Packages"):
         installed_packages = get_installed_pkg()
         installed_packages.sort(key=operator.itemgetter("Name"))
         st.dataframe(installed_packages, column_config={"URL": st.column_config.LinkColumn()}, use_container_width=True)
 
-    # with st.expander("Logging information"):
-    #     st.code(st.session_state.logging)
+    with st.expander("Logging information"):
+        st.code(st.session_state.logging)

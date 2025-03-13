@@ -12,6 +12,7 @@ from own_your_data.utils import get_plotly_colors
 from own_your_data.utils import timeit
 
 
+@timeit
 def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
 
     columns = get_columns(table_name=table_name)
@@ -196,6 +197,7 @@ def get_chart_configuration(table_name: str) -> ChartConfiguration | None:
     )
 
 
+@timeit
 def get_chart_layout(chart_configuration: ChartConfiguration | None) -> ChartConfiguration | None:
     if not chart_configuration:
         return None
@@ -308,6 +310,7 @@ def get_charts_components(chart_configuration: ChartConfiguration):
     sql_query = chart_class.sql_query
 
     fig_plot.update_layout(
+        overwrite=True,
         title={"text": chart_configuration.title},
         height=chart_configuration.height,
         width=chart_configuration.width,
@@ -318,9 +321,9 @@ def get_charts_components(chart_configuration: ChartConfiguration):
     )
 
     if chart_configuration.x_label:
-        fig_plot.update_layout(xaxis_title=chart_configuration.x_label)
+        fig_plot.update_layout(overwrite=True, xaxis_title=chart_configuration.x_label)
     if chart_configuration.y_label:
-        fig_plot.update_layout(yaxis_title=chart_configuration.y_label)
+        fig_plot.update_layout(overwrite=True, yaxis_title=chart_configuration.y_label)
 
     if chart_class.x_integer:
         fig_plot.update_xaxes(type="category")

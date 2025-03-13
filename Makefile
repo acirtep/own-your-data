@@ -1,3 +1,5 @@
+.PHONY: local_run check demo_file test serve_desktop docs
+
 local_run:
 	streamlit run own_your_data/app.py
 

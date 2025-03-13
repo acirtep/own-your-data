@@ -18,10 +18,10 @@
     }
   },
   "devDependencies": {
-    "@stlite/desktop": "^0.73.0",
-    "cross-env": "^7.0.3",
-    "electron": "33.2.0",
-    "electron-builder": "^25.1.8"
+    "@stlite/desktop": "^0.80.1",
+     "cross-env": "^7.0.3",
+    "electron": "33.3.1",
+    "electron-builder": "^25.1.7"
   },
   "stlite": {
     "desktop": {
@@ -31,7 +31,7 @@
       "entrypoint": "own_your_data/app.py",
       "dependencies": [
         "plotly==5.24.1",
-        "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.1.2-cp312-cp312-pyodide_2024_0_wasm32.whl",
+        "https://duckdb.github.io/duckdb-pyodide/wheels/duckdb-1.2.0-cp312-cp312-pyodide_2024_0_wasm32.whl",
         "streamlit-code-editor==0.1.21",
         "sqlparse==0.5.1"
       ],
