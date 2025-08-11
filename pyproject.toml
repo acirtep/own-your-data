@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "own-your-data"
-version = "0.2.5"
+version = "0.2.6"
 description = "Application to track and trace any data you want, on your local machine, through the web browser"
 authors = ["acirtep <acirtep>"]
 readme = "README.md"
@@ -46,7 +46,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.2.5"
+version = "0.2.6"
 tag_format = "v$version"
 version_files = [
   "pyproject.toml:version"
