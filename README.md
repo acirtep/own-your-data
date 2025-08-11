@@ -7,7 +7,7 @@ This is an (experimental) in-browser application, based on:
 4. [duckdb](https://duckdb.org/)
 5. [pyodide](https://pyodide.org/en/stable/)
 
-The application is available at: https://www.own-your-data.nl
+The application is available at: https://acirtep.github.io/own-your-data.
 
 
 ## run it locally

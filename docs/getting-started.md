@@ -1,4 +1,4 @@
-To start exploring your data, open the [playground](https://www.own-your-data.nl/playground){:target="_blank"}.
+To start exploring your data, open the [playground](https://acirtep.github.io/own-your-data/playground){:target="_blank"}.
 
 
 By opening the application, Pyodide will install in the memory of the browser the necessary code (together with demo data)
