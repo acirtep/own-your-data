@@ -1,4 +1,3 @@
-import datetime
 import time
 
 import streamlit as st
@@ -10,6 +9,7 @@ from sqlparse import parse
 from sqlparse.sql import Identifier
 
 from own_your_data.components.chart_configuration import get_cached_plot
+from own_your_data.utils import add_timestamp_to_str
 from own_your_data.utils import cache_duckdb_execution
 from own_your_data.utils import get_duckdb_conn
 from own_your_data.utils import get_tables
@@ -34,7 +34,7 @@ def execute_sql(sql_editor):
                 df = duckdb_conn.execute(str(statement)).df()
                 end_time = time.perf_counter()
                 st.info(f"Execution time: {(end_time - start_time) * 1000: .4f} ms")
-                insert_database_size()
+                insert_database_size(duckdb_conn)
                 st.info(statement.get_type())
                 st.dataframe(df, hide_index=True, height=200, use_container_width=True)
                 if statement.get_type() in ["INSERT", "CREATE", "DELETE", "DROP", "CREATE OR REPLACE"]:
@@ -44,7 +44,6 @@ def execute_sql(sql_editor):
                 st.error("There is a fatal error in duckdb, the below SQL cannot be executed!")
                 st.code(statement)
                 duckdb_conn.close()
-                get_duckdb_conn.clear()
             except Exception as error:
                 st.error(error)
 
@@ -61,7 +60,7 @@ def display_duckdb_catalog():
         for table in st.session_state.table_options:
             with st.expander(table):
                 for col in duckdb_conn.execute(
-                    f"select column_name from duckdb_columns where table_name = '{table}' order by column_name"
+                    f"select column_name from duckdb_columns where table_name = '{table}' order by column_index"
                 ).fetchall():
                     st.markdown(f"- {col[0]}")
     else:
@@ -121,7 +120,7 @@ def get_code_editor():
         download_col.download_button(
             "Download code",
             data=st.session_state.sql_code,
-            file_name=f"own_your_data_code_{datetime.datetime.now().isoformat()}.sql",
+            file_name=f"{add_timestamp_to_str('own_your_data_code')}.sql",
             help="Download the code written in the editor",
             use_container_width=True,
             icon="⬇️",

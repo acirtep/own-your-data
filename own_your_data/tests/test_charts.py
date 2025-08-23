@@ -180,3 +180,12 @@ def test_generate_pie_chart(duckdb_conn_with_final_csv_data, aggregation, final_
         table_name=final_table_name,
     )
     assert pie_chart.plot
+
+
+# unrelated to scattermapbox, plotly gives a warning about its deprecation
+# def test_warning():
+#     import plotly.express as px
+#
+#     df = px.data.gapminder().query("country=='Canada'")
+#     fig = px.line(df, x="year", y="lifeExp", title='Life expectancy in Canada')
+#     fig.update_layout(template="plotly_dark")
